@@ -27,7 +27,7 @@ export function BottomNav() {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={`flex min-h-[64px] flex-col items-center justify-center gap-0.5 px-2 text-nav ${
-                  active ? "font-bold text-primary-ink" : "font-medium text-fg-muted"
+                  active ? "font-bold text-primary" : "font-medium text-fg-muted"
                 }`}
               >
                 <Icon />

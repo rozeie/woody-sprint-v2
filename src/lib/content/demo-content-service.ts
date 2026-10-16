@@ -35,6 +35,8 @@ export interface ContentService {
   createRecommendation(args: {
     direction: ConfirmedDirection;
     input: OnboardingDraft | null;
+    /** 새 회차에서 후보에서 뺄 자료 id(직전 추천, 이미 선택한 자료). 빼고 남는 자료가 모자라면 부족 상태가 된다 */
+    excludeContentIds?: readonly string[];
   }): Promise<RecommendationSet>;
   getCards(set: RecommendationSet): Promise<RecommendationCard[]>;
   /** 추천 묶음에 포함된 자료의 미리보기. 포함되지 않았거나 없으면 null. */
@@ -55,9 +57,9 @@ export function createDemoContentService(
   const byId = new Map(catalog.map((c) => [c.id, c]));
 
   return {
-    async createRecommendation({ direction, input }) {
+    async createRecommendation({ direction, input, excludeContentIds }) {
       const topicKeys = direction.topics.map((t) => t.key);
-      const picked = pickRecommendations(catalog, topicKeys);
+      const picked = pickRecommendations(catalog, topicKeys, excludeContentIds);
       const items = picked.map(({ content, matched }) => {
         const args = {
           content,
@@ -89,6 +91,9 @@ export function createDemoContentService(
         cards.push({
           contentId: c.id,
           title: c.title,
+          type: c.type,
+          shortSummary: c.shortSummary,
+          linkedTopicLabels: item.matchedTopicKeys.filter((k) => c.topics.includes(k)).slice(0, 2).map(labelOf),
           summary: c.summary,
           keyLearnings: [...c.keyLearnings],
           typeLabel: CONTENT_TYPE_LABEL[c.type],
@@ -124,6 +129,8 @@ export function createDemoContentService(
         contentId: c.id,
         title: c.title,
         typeLabel: CONTENT_TYPE_LABEL[c.type],
+        summary: c.summary,
+        keyLearnings: [...c.keyLearnings],
         subject: c.preview.subject,
         topicLabels: c.topics.map(labelOf),
         whatYouLearn: [...c.preview.whatYouLearn],

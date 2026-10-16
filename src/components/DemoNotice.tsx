@@ -11,7 +11,7 @@ function noticeFor(pathname: string): { title: string; body: string } {
   if (pathname === "/home") {
     return {
       title: "UI 데모: 모의 추천",
-      body: "예시 자료(검수 전)와 모의 추천 이유예요. 읽기 시간 측정과 매일 오후 6시 자동 교체는 아직 없어요.",
+      body: "예시 자료(검수 전)와 모의 추천 이유예요. 읽기 시간 측정은 아직 없고, 추천은 서버가 아니라 이 브라우저에서 접속할 때 오후 6시(한국 시간) 기준으로 바뀌어요.",
     };
   }
   if (pathname.startsWith("/content/")) {

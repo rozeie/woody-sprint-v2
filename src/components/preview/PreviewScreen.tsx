@@ -113,7 +113,6 @@ export function PreviewScreen({ contentId }: { contentId: string }) {
             onBack={goBack}
             select={
               <SelectArea
-                layout="page"
                 contentId={state.preview.contentId}
                 title={state.preview.title}
                 state={mineState}
@@ -146,6 +145,7 @@ function PreviewBody({
     <div>
       <p className="text-caption font-semibold text-fg-secondary">{preview.typeLabel}</p>
       <h1 className="mt-1 text-page-title font-bold">{preview.title}</h1>
+      <p className="mt-2 text-body text-fg-secondary">{preview.summary}</p>
 
       <section aria-labelledby="pv-subject" className="mt-8">
         <h2 id="pv-subject" className="text-section-title font-bold">
@@ -153,6 +153,19 @@ function PreviewBody({
         </h2>
         <p className="mt-3 text-body">{preview.subject}</p>
         <p className="mt-2 text-caption text-fg-secondary">관련 주제: {preview.topicLabels.join(", ")}</p>
+      </section>
+
+      <section aria-labelledby="pv-key" className="mt-8">
+        <h2 id="pv-key" className="text-section-title font-bold">
+          핵심 학습 내용
+        </h2>
+        <ul className="mt-3 space-y-2 text-body">
+          {preview.keyLearnings.map((k) => (
+            <li key={k} className="border-l-2 border-line pl-3">
+              {k}
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section aria-labelledby="pv-learn" className="mt-8">

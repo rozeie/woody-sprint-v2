@@ -1,6 +1,6 @@
 /**
  * 모의 추천 규칙 (PRD F2-02·F2-07). 순수 함수 — 실제 개인화 알고리즘이 아니라 UI 데모용 태그 매칭이다.
- * - 확정한 세부 주제와 겹치는 자료만 후보(관련성 없는 자료로 채우지 않는다).
+ * - 확정한 세부 주제와 겹치는 자료만 후보(관련성 없는 자료로 채우지 않는다). 새 회차에서는 직전 추천과 이미 선택한 자료를 뺀다.
  * - 점수(겹친 주제 수)가 높은 순, 같으면 목록 순서. 두 번째는 가능하면 첫 번째와 다른 유형.
  * - 후보가 2개 미만이면 있는 만큼만 돌려준다(0~1개).
  * - 추천 이유: 카드에는 한 문장(reason), 미리보기에는 구체적인 설명(detail).
@@ -19,8 +19,11 @@ export type Picked = { content: ContentFull; matched: string[] };
 export function pickRecommendations(
   catalog: readonly ContentFull[],
   topicKeys: readonly string[],
+  /** 후보에서 뺄 자료(새 회차에서 직전 추천과 이미 선택한 자료를 다시 보여 주지 않기 위함) */
+  excludeContentIds: readonly string[] = [],
 ): Picked[] {
   const scored = catalog
+    .filter((content) => !excludeContentIds.includes(content.id))
     .map((content, order) => {
       const matched = content.topics.filter((k) => topicKeys.includes(k));
       return { content, matched, order };

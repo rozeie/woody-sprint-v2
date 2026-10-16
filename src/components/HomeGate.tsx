@@ -1,18 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getContentService } from "@/lib/content";
 import type { RecommendationCard as Card } from "@/lib/content/types";
 import { getRepository } from "@/lib/data";
 import type { ConfirmedDirection } from "@/lib/direction-rules";
-import { continueReadingOrder, stateOf, type UserContent } from "@/lib/selection-rules";
+import { continueReadingOrder, type UserContent } from "@/lib/selection-rules";
+import { cycleEndMs, cycleKeyOf, cycleKeyOfIso, formatRemaining, remainingMs } from "@/lib/recommendation-cycle";
 import { buildStackDays, type StackDay } from "@/lib/stack-rules";
 import { ContinueReading, type ContinueItem } from "./home/ContinueReading";
 import { RecommendationCard } from "./home/RecommendationCard";
+import { HomeHero } from "./home/HomeHero";
 import { StudyStack } from "./home/StudyStack";
-import { SelectArea } from "./selection/SelectArea";
-import { useSelectAction } from "./selection/useSelectAction";
 import { TabScreen } from "./TabScreen";
 
 type HomeData = {
@@ -39,28 +39,39 @@ async function loadContinueItems(userContents: UserContent[]): Promise<ContinueI
 
 /**
  * 홈. 방향 확정 전에는 온보딩으로 보낸다(PRD F4-01).
- * 확정 후: 학습 스택 → 오늘의 추천 2개 → 이어서 읽기(선택한 자료가 있을 때만).
+ * 확정 후: 상단 대표 섹션 → 학습 스택 → 이어서 읽기(선택한 미완료 자료가 있을 때만) → 오늘의 추천 2개.
  * 추천 묶음은 확정 직후 만들어 저장하고, 없으면 이 화면에서 한 번 만든다. 이후에는 같은 묶음을 그대로 보여 준다.
  * 선택이 연결된 묶음·확정한 방향은 덮어쓰지 않는다.
  */
 export function HomeGate() {
   const router = useRouter();
   const [data, setData] = useState<HomeData | null>(null);
-  const [focusRequest, setFocusRequest] = useState<{ id: string; n: number } | null>(null);
-
-  // 선택이 바뀌었을 때 서재 기록과 이어서 읽기만 다시 읽는다(추천 묶음은 그대로)
-  const refreshSelections = useCallback(async (focusId?: string) => {
-    const userContents = await getRepository().getUserContents();
-    const continueItems = await loadContinueItems(userContents);
-    setData((prev) => (prev ? { ...prev, userContents, continueItems } : prev));
-    if (focusId) setFocusRequest((p) => ({ id: focusId, n: (p?.n ?? 0) + 1 }));
-  }, []);
-
-  const { pendingId, busy, notice, select } = useSelectAction(async ({ contentId, selected }) => {
-    await refreshSelections(selected ? contentId : undefined);
-  });
+  // 남은 시간과 추천 회차를 판단하는 현재 시각. 주기적으로, 탭에 돌아왔을 때, 교체 시각에 맞춰 갱신한다(브라우저 시계 기준 데모)
+  // (Cache Components는 렌더 중 현재 시각을 읽지 못하므로 효과 안에서 처음 채운다)
+  const [nowMs, setNowMs] = useState<number | null>(null);
+  const cycleKey = nowMs === null ? null : cycleKeyOf(nowMs);
 
   useEffect(() => {
+    const refresh = () => setNowMs(Date.now());
+    const first = setTimeout(refresh, 0); // 화면이 다시 보일 때(다른 화면에서 돌아옴) 바로 현재 시각으로 맞춘다
+    const interval = setInterval(refresh, 15_000);
+    const atBoundary = setTimeout(refresh, cycleEndMs(Date.now()) - Date.now() + 500);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", refresh);
+    return () => {
+      clearTimeout(first);
+      clearInterval(interval);
+      clearTimeout(atBoundary);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [cycleKey]);
+
+  useEffect(() => {
+    if (cycleKey === null) return; // 현재 시각을 아직 읽지 않았다
     let alive = true;
     (async () => {
       const repo = getRepository();
@@ -77,11 +88,17 @@ export function HomeGate() {
       const existingContents = await repo.getUserContents();
       let set = await repo.getRecommendationSet();
       const hasSelection = set ? existingContents.some((u) => u.setId === set!.id) : false;
-      // 묶음이 없거나(또는 확정한 주제와 다르고) 선택이 연결되지 않았을 때만 새로 만든다
-      if (!set || (!sameKeys(set.directionTopicKeys, topicKeys) && !hasSelection)) {
+      // 저장된 묶음이 이전 회차(오후 6시가 지남)면 새 회차의 묶음으로 바꾼다. 앱을 닫아 두었다가 열어도 같다.
+      const stale = !!set && cycleKeyOfIso(set.createdAt) < cycleKey;
+      // 묶음이 없거나, 회차가 바뀌었거나, (확정한 주제와 다르고) 선택이 연결되지 않았을 때 새로 만든다
+      if (!set || stale || (!sameKeys(set.directionTopicKeys, topicKeys) && !hasSelection)) {
         const draft = await repo.getDirectionDraft();
         const input = draft?.input ?? (await repo.getOnboardingDraft());
-        const created = await service.createRecommendation({ direction, input });
+        // 새 회차에서는 직전 추천과 이미 선택한 자료를 빼고 같은 기준으로 고른다. 남는 자료가 모자라면 부족 상태가 된다(관련 없는 자료로 채우지 않는다)
+        const excludeContentIds = stale
+          ? [...set!.items.map((i) => i.contentId), ...existingContents.map((u) => u.contentId)]
+          : [];
+        const created = await service.createRecommendation({ direction, input, excludeContentIds });
         set = (await repo.saveRecommendationSet(created)) ? created : ((await repo.getRecommendationSet()) ?? created);
       }
       const cards = await service.getCards(set);
@@ -102,13 +119,7 @@ export function HomeGate() {
     return () => {
       alive = false;
     };
-  }, [router]);
-
-  // 선택이 끝나면 새로 나타난 "바로 학습 시작" 버튼으로 포커스를 옮긴다(누른 버튼이 사라지므로)
-  useEffect(() => {
-    if (!focusRequest) return;
-    document.querySelector<HTMLElement>(`[data-start="${focusRequest.id}"]`)?.focus();
-  }, [focusRequest]);
+  }, [router, cycleKey]);
 
   if (!data) {
     return (
@@ -123,18 +134,24 @@ export function HomeGate() {
 
   return (
     <TabScreen>
-      {/* 하단 탐색이 현재 위치를 알려 주므로 제목은 화면 낭독용으로만 둔다(공간 절약) */}
-      <h1 className="sr-only">홈</h1>
+      <HomeHero />
 
-      <StudyStack days={stackDays} />
+      <div className="mt-6">
+        <StudyStack days={stackDays} />
+      </div>
+
+      {/* 선택했지만 완료하지 않은 자료가 있을 때만 그려지며, 있으면 오늘의 추천보다 위에 둔다 */}
+      <ContinueReading items={continueItems} />
 
       <section aria-labelledby="rec-title" className="mt-6">
-        <h2 id="rec-title" className="text-section-title font-bold">
-          오늘의 추천
-        </h2>
-        <p className="mt-1 text-caption text-fg-secondary">
-          매일 오후 6시(KST)에 추천이 바뀌어요. 선택한 자료는 서재에서 계속 읽을 수 있어요.
-        </p>
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 id="rec-title" className="text-section-title font-bold">
+            오늘의 추천
+          </h2>
+          <p data-replace-countdown className="shrink-0 text-caption font-semibold text-fg-secondary">
+            {nowMs !== null && formatRemaining(remainingMs(nowMs))}
+          </p>
+        </div>
         <p className="mt-1 text-caption text-fg-muted">‘{direction.coreDirection.label}’ 방향 기준</p>
 
         {shortage === "zero" ? (
@@ -148,20 +165,8 @@ export function HomeGate() {
                 key={card.contentId}
                 card={card}
                 index={i}
-                footer={
-                  <SelectArea
-                    layout="card"
-                    contentId={card.contentId}
-                    title={card.title}
-                    previewHref={`/content/${card.contentId}/preview`}
-                    state={selectedInSet?.contentId === card.contentId ? stateOf(selectedInSet) : null}
-                    otherSelected={!!selectedInSet && selectedInSet.contentId !== card.contentId}
-                    pending={pendingId === card.contentId}
-                    busy={busy}
-                    notice={notice}
-                    onSelect={() => select({ setId, contentId: card.contentId, title: card.title })}
-                  />
-                }
+                previewHref={`/content/${card.contentId}/preview`}
+                selected={selectedInSet?.contentId === card.contentId}
               />
             ))}
           </div>
@@ -174,7 +179,6 @@ export function HomeGate() {
         )}
       </section>
 
-      <ContinueReading items={continueItems} />
     </TabScreen>
   );
 }

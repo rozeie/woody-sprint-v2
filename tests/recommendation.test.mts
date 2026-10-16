@@ -64,6 +64,33 @@ describe("예시 자료 데이터", () => {
     }
   });
 
+  it("홈 카드용 짧은 소개는 약 30자 안팎의 완결된 한 문장이며 제목을 반복하거나 소개를 잘라 만든 것이 아니다", () => {
+    for (const c of DEMO_CONTENTS) {
+      const t = c.shortSummary;
+      assert.ok([...t].length >= 24 && [...t].length <= 38, c.id + " " + t);
+      assert.equal(t.includes(c.title), false, c.id);
+      assert.ok(/[.요다]$/.test(t), c.id);
+      assert.equal(t.includes("…") || t.includes("..."), false, c.id);
+      assert.equal(c.summary.startsWith(t.replace(/[.]+$/, "")), false, c.id); // 소개의 앞부분을 그대로 자른 문장이 아니다
+    }
+  });
+
+  it("카드와 미리보기 응답에 짧은 소개, 소개, 핵심 학습 내용이 담긴다", async () => {
+    const c = DEMO_CONTENTS[0];
+    const set = await service.createRecommendation({
+      direction: { coreDirection: { label: "x", description: "y" }, topics: c.topics.map((k) => ({ key: k, label: k })), edited: false, reanalysisCount: 0, confirmedAt: "2026-10-16T00:00:00.000Z" },
+      input: { concernKeys: [...c.topics], otherSelected: false, otherText: "", detailText: "", situation: "junior" },
+    });
+    const cards = await service.getCards(set);
+    assert.ok(cards.length >= 1 && cards.every((k) => k.shortSummary.length > 0));
+    // 연결 주제는 확정한 주제와 자료 주제의 교집합이며 최대 2개다
+    for (const k of cards) {
+      assert.ok(k.linkedTopicLabels.length <= 2);
+    }
+    const pv = await service.getPreview(set, cards[0].contentId);
+    assert.ok(pv && pv.summary.length > 0 && pv.keyLearnings.length >= 3 && pv.topicLabels.length >= 1 && pv.connection.length > 0);
+  });
+
   it("후보 부족 상태 재현용으로 자료가 없는 주제가 있다", () => {
     const covered = new Set(DEMO_CONTENTS.flatMap((c) => c.topics));
     assert.equal(covered.has("ux-writing"), false);
@@ -114,6 +141,16 @@ describe("추천 2개 선정", () => {
     assert.notEqual(picked[0].content.id, picked[1].content.id);
     assert.notEqual(picked[0].content.type, picked[1].content.type);
     for (const p of picked) assert.ok(p.matched.length >= 1 && p.matched.every((k) => typical.includes(k)));
+  });
+
+  it("새 회차에서는 제외할 자료(직전 추천, 선택한 자료)를 뺀 후보에서 같은 기준으로 고르고, 모자라도 관련 없는 자료로 채우지 않는다", () => {
+    const first = pickRecommendations(DEMO_CONTENTS, typical).map((p) => p.content.id);
+    const next = pickRecommendations(DEMO_CONTENTS, typical, first);
+    assert.ok(next.every((p) => !first.includes(p.content.id)));
+    assert.ok(next.every((p) => p.matched.length >= 1 && p.matched.every((k) => typical.includes(k))));
+    // 겹치는 자료를 모두 제외하면 비어 있어야 한다(관련 없는 자료로 채우지 않는다)
+    const all = DEMO_CONTENTS.filter((c) => c.topics.some((k) => typical.includes(k))).map((c) => c.id);
+    assert.equal(pickRecommendations(DEMO_CONTENTS, typical, all).length, 0);
   });
 
   it("같은 입력이면 같은 결과(결정적)", () => {
@@ -267,10 +304,10 @@ describe("추천 묶음·카드·미리보기", () => {
   });
 });
 
-describe("학습 스택(28일 잔디)", () => {
+describe("학습 스택(30일 잔디)", () => {
   const today = new Date(2026, 9, 21, 15, 30); // 2026-10-21
 
-  it("기록이 없으면 28칸 모두 비활성이다 (접속·분석·확정으로는 채워지지 않는다)", () => {
+  it("기록이 없으면 30칸 모두 비활성이다 (접속·분석·확정으로는 채워지지 않는다)", () => {
     const days = buildStackDays(today, []);
     assert.equal(days.length, STACK_DAYS);
     assert.equal(days.filter((d) => d.active).length, 0);
@@ -278,10 +315,10 @@ describe("학습 스택(28일 잔디)", () => {
 
   it("오래된 날부터 오늘까지 연속된 날짜이고 마지막 칸만 오늘이다", () => {
     const days = buildStackDays(today, []);
-    assert.equal(days[0].date, "2026-09-24");
-    assert.equal(days[27].date, "2026-10-21");
+    assert.equal(days[0].date, "2026-09-22");
+    assert.equal(days[29].date, "2026-10-21");
     assert.equal(days.filter((d) => d.isToday).length, 1);
-    assert.equal(days[27].isToday, true);
+    assert.equal(days[29].isToday, true);
     for (let i = 1; i < days.length; i++) assert.ok(days[i].date > days[i - 1].date);
   });
 
@@ -309,8 +346,8 @@ describe("학습 스택(28일 잔디)", () => {
 
   it("월·연도 경계에서도 날짜가 하루씩 이어진다", () => {
     const days = buildStackDays(new Date(2027, 0, 5, 9), []);
-    assert.equal(days[0].date, "2026-12-09");
-    assert.equal(days[27].date, "2027-01-05");
-    assert.equal(new Set(days.map((d) => d.date)).size, 28);
+    assert.equal(days[0].date, "2026-12-07");
+    assert.equal(days[29].date, "2027-01-05");
+    assert.equal(new Set(days.map((d) => d.date)).size, 30);
   });
 });

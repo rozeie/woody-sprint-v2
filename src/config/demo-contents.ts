@@ -11,6 +11,7 @@ export const DEMO_CONTENTS: readonly ContentFull[] = [
   {
     id: "user-interview-basics",
     title: "사용자 인터뷰, 무엇을 물어야 문제가 보일까",
+    shortSummary: "인터뷰를 문제 찾기로 쓰기 위한 기본 개념을 정리해요.",
     summary: "인터뷰를 ‘의견 수집’이 아니라 ‘문제 찾기’로 쓰기 위한 기본 개념을 정리해요.",
     keyLearnings: ["의견과 행동 구분", "질문 설계 원칙", "문제 후보로 바꾸기"],
     type: "concept",
@@ -32,6 +33,7 @@ export const DEMO_CONTENTS: readonly ContentFull[] = [
   {
     id: "research-synthesis-case",
     title: "리서치 결과를 한 장으로 정리한 사례 살펴보기",
+    shortSummary: "인터뷰와 지표를 함께 읽고 발견을 정리한 가상 사례를 따라가요.",
     summary: "인터뷰와 지표를 함께 읽고 발견을 정리한 가상의 프로젝트 사례를 따라가 봐요.",
     keyLearnings: ["메모 주제별 묶기", "정성과 숫자 함께 읽기", "한 장 요약 구성"],
     type: "case",
@@ -53,6 +55,7 @@ export const DEMO_CONTENTS: readonly ContentFull[] = [
   {
     id: "problem-framing-framework",
     title: "문제를 한 문장으로 정의하는 틀",
+    shortSummary: "요구사항 뒤에 있는 문제를 한 문장으로 적는 틀이에요.",
     summary: "요구사항 뒤에 있는 문제를 한 문장으로 적어 보는 틀을 소개해요.",
     keyLearnings: ["요구와 문제 구분", "문제 문장 세 칸 틀", "팀과 합의하는 순서"],
     type: "framework",
@@ -74,6 +77,7 @@ export const DEMO_CONTENTS: readonly ContentFull[] = [
   {
     id: "metrics-reading-practice",
     title: "지표를 보고 질문을 만드는 연습",
+    shortSummary: "숫자 변화를 보고 왜를 묻는 질문으로 바꾸는 연습이에요.",
     summary: "숫자 변화를 보고 ‘왜’를 묻는 질문으로 바꾸는 연습을 해요.",
     keyLearnings: ["지표에서 질문 만들기", "성공 기준 미리 쓰기", "숫자로 단정하지 않기"],
     type: "practice",
@@ -95,6 +99,7 @@ export const DEMO_CONTENTS: readonly ContentFull[] = [
   {
     id: "flow-structure-concept",
     title: "화면보다 먼저 흐름과 구조를 보는 법",
+    shortSummary: "그리기 전에 흐름과 정보 구조를 먼저 잡는 개념이에요.",
     summary: "화면 하나를 그리기 전에 사용자의 흐름과 정보 구조를 먼저 잡는 개념을 정리해요.",
     keyLearnings: ["목표에서 시작하는 흐름", "정보 묶기와 이름 짓기", "간단한 프로토타입 확인"],
     type: "concept",
@@ -116,6 +121,7 @@ export const DEMO_CONTENTS: readonly ContentFull[] = [
   {
     id: "ui-hierarchy-practice",
     title: "화면의 위계를 바로잡는 UI 연습",
+    shortSummary: "같은 화면을 크기, 간격, 색 순서로 다듬으며 위계를 연습해요.",
     summary: "같은 화면을 크기, 간격, 색의 순서로 다듬어 보며 위계를 연습해요.",
     keyLearnings: ["주 행동 하나 정하기", "크기와 간격으로 위계", "일관성 맞추기"],
     type: "practice",
@@ -137,6 +143,7 @@ export const DEMO_CONTENTS: readonly ContentFull[] = [
   {
     id: "design-system-rules-framework",
     title: "반복되는 요소를 규칙으로 정리하는 틀",
+    shortSummary: "반복되는 요소를 찾아 이름과 규칙으로 정리하는 순서예요.",
     summary: "화면에서 반복되는 요소를 찾아 이름과 규칙으로 정리하는 순서를 소개해요.",
     keyLearnings: ["반복 요소 찾기", "토큰과 컴포넌트 구분", "규칙 문서화"],
     type: "framework",
@@ -158,6 +165,7 @@ export const DEMO_CONTENTS: readonly ContentFull[] = [
   {
     id: "dev-handoff-case",
     title: "개발자와 구현 범위를 맞춘 사례",
+    shortSummary: "디자인을 넘기기 전후에 오간 대화를 가상 사례로 따라가요.",
     summary: "디자인을 넘기기 전과 후에 오간 대화를 가상의 사례로 따라가 봐요.",
     keyLearnings: ["구현 가능성 질문", "상태와 예외 정리", "범위 줄이는 방법"],
     type: "case",
@@ -179,6 +187,7 @@ export const DEMO_CONTENTS: readonly ContentFull[] = [
   {
     id: "persuade-with-evidence-practice",
     title: "근거로 의견을 설득하는 연습",
+    shortSummary: "의견이 다른 상대에게 근거를 들어 설명하고 피드백을 받아요.",
     summary: "의견이 다른 상대에게 근거를 들어 설명하고 피드백을 받는 연습을 해요.",
     keyLearnings: ["주장과 근거 나누기", "상대 걱정 먼저 정리", "피드백을 할 일로"],
     type: "practice",
@@ -200,6 +209,7 @@ export const DEMO_CONTENTS: readonly ContentFull[] = [
   {
     id: "portfolio-story-framework",
     title: "프로젝트를 문제 해결 이야기로 구성하는 틀",
+    shortSummary: "작업물을 나열하지 않고 문제와 선택의 이야기로 엮는 구성이에요.",
     summary: "작업물을 나열하지 않고 문제와 선택의 이야기로 엮는 구성을 소개해요.",
     keyLearnings: ["네 단계로 나누기", "내 역할과 선택 이유", "보여줄 프로젝트 고르기"],
     type: "framework",
@@ -221,6 +231,7 @@ export const DEMO_CONTENTS: readonly ContentFull[] = [
   {
     id: "explain-process-practice",
     title: "작업 과정을 말로 설명하는 연습",
+    shortSummary: "결과물이 아니라 과정과 이유를 말로 풀어 보는 연습이에요.",
     summary: "결과물이 아니라 과정과 이유를 말로 풀어 보는 연습을 해요.",
     keyLearnings: ["30초 맥락 전달", "선택의 이유 말하기", "예상 질문 정리"],
     type: "practice",

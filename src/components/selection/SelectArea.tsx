@@ -11,11 +11,8 @@ const MINE: Record<ContentState, { action: string; hint: string }> = {
   completed: { action: "다시 읽기", hint: "학습을 완료했어요." },
 };
 
-/** 카드의 두 버튼: 공간이 있으면 한 줄에 나란히, 좁거나 글자가 커지면 세로로 쌓여 글자가 잘리지 않는다(rem 기준) */
-const CARD_BUTTON = "!w-auto flex-1 basis-[9rem]";
-
 /**
- * 선택 영역 (PRD F2-04, F2-05, DESIGN §1.1): 선택 버튼 바로 옆에 "선택한 학습 자료는 변경할 수 없어요."를 상시 보여 준다.
+ * 선택 영역(상세 미리보기 화면에서만 쓴다. 홈 카드에는 선택 동작이 없다) (PRD F2-04, F2-05, DESIGN §1.1): 선택 버튼 바로 옆에 "선택한 학습 자료는 변경할 수 없어요."를 상시 보여 준다.
  * 선택 확인 모달은 쓰지 않는다(PRD 미확정, 상시 안내로 갈음). 선택은 서재 저장까지만 하고 학습 시작이나 완료로 처리하지 않는다.
  * - 아직 선택 전: 선택하기 버튼과 변경 불가 안내
  * - 이 자료를 선택함: 상태에 맞는 학습 버튼(바로 학습 시작, 이어서 읽기, 다시 읽기)이 곧바로 리더 본문으로 연결된다
@@ -30,8 +27,6 @@ export function SelectArea({
   busy,
   notice,
   onSelect,
-  layout,
-  previewHref,
 }: {
   contentId: string;
   title: string;
@@ -42,28 +37,16 @@ export function SelectArea({
   busy: boolean;
   notice: SelectNotice | null;
   onSelect: () => void;
-  layout: "card" | "page";
-  /** 카드 레이아웃에서 나란히 둘 "상세 미리보기" 링크 */
-  previewHref?: string;
 }) {
-  const hintId = `select-hint-${contentId}-${layout}`;
+  const hintId = `select-hint-${contentId}`;
   const myNotice = notice && notice.contentId === contentId ? notice : null;
-  const compact = layout === "card";
 
   const action = state ? (
-    <ButtonLink
-      href={`/read/${contentId}`}
-      compact={compact}
-      className={compact ? CARD_BUTTON : ""}
-      data-start={contentId}
-      aria-label={`‘${title}’ ${MINE[state].action}`}
-    >
+    <ButtonLink href={`/read/${contentId}`} data-start={contentId} aria-label={`‘${title}’ ${MINE[state].action}`}>
       {MINE[state].action}
     </ButtonLink>
   ) : (
     <Button
-      compact={compact}
-      className={compact ? CARD_BUTTON : ""}
       aria-disabled={otherSelected || busy || undefined}
       aria-describedby={hintId}
       aria-label={`‘${title}’ 선택하기`}
@@ -72,7 +55,7 @@ export function SelectArea({
         onSelect();
       }}
     >
-      {pending ? "저장 중…" : layout === "page" ? "이 자료 선택하기" : "선택하기"}
+      {pending ? "저장 중…" : "이 자료 선택하기"}
     </Button>
   );
 
@@ -83,25 +66,8 @@ export function SelectArea({
       : CHANGE_NOTICE;
 
   return (
-    <div className={compact ? "mt-3" : ""}>
-      {compact ? (
-        <div className="flex flex-wrap gap-2">
-          {previewHref && (
-            <ButtonLink
-              href={previewHref}
-              compact
-              className={CARD_BUTTON}
-              variant="secondary"
-              aria-label={`‘${title}’ 상세 미리보기`}
-            >
-              상세 미리보기
-            </ButtonLink>
-          )}
-          {action}
-        </div>
-      ) : (
-        action
-      )}
+    <div>
+      {action}
       <p id={hintId} className="mt-1 text-caption text-fg-secondary">
         {hint}
       </p>

@@ -32,7 +32,9 @@ export type SelectOutcome =
   /** 이 묶음에서는 이미 다른 자료를 선택했다. */
   | { status: "set-has-selection"; item: UserContent }
   /** 이 묶음에 없는 자료다. */
-  | { status: "not-in-set" };
+  | { status: "not-in-set" }
+  /** 이 묶음의 추천 회차가 끝났다(오후 6시가 지나 추천이 새로 바뀜). 이전 회차의 자료는 새로 선택할 수 없다. */
+  | { status: "expired" };
 
 export type SetRef = { id: string; items: readonly { contentId: string }[] };
 

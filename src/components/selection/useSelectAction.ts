@@ -33,6 +33,12 @@ export function useSelectAction(
           tone: "error",
           text: "이번 추천에서는 이미 다른 자료를 선택했어요. 선택은 바꿀 수 없어요.",
         });
+      } else if (out.status === "expired") {
+        setNotice({
+          contentId: args.contentId,
+          tone: "error",
+          text: "추천이 새로 바뀌었어요. 이전 추천의 자료는 선택할 수 없어요. 홈에서 새 추천을 확인해 주세요.",
+        });
       } else {
         setNotice({
           contentId: args.contentId,

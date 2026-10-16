@@ -1,12 +1,12 @@
 /**
  * 학습 스택(잔디) 규칙 (PRD F4-02 확정, DESIGN §9). 순수 함수 — 의존성 없음.
- * - 최근 28일 연속 배열, 하루 최대 1칸.
+ * - 오늘을 포함한 최근 30일 연속 배열, 하루 최대 1칸.
  * - 하루 합산 활성 읽기 시간이 5분(300초) 이상일 때만 활성. 접속·분석·확정·선택만으로는 절대 활성화되지 않는다.
  * 이 모듈이 받는 입력은 "읽기 기록(날짜별 활성 초)"뿐이며, 현재 데모에는 읽기 측정이 없어 기록이 비어 있다.
  * 날짜 경계는 PRD D-14(KST 0시 제안) 미확정이라, 데모는 브라우저 로컬 날짜를 쓴다.
  */
 
-export const STACK_DAYS = 28;
+export const STACK_DAYS = 30;
 export const ACTIVE_READING_SECONDS = 300;
 
 export type ReadingDay = { date: string; activeSeconds: number };

@@ -10,6 +10,7 @@ import {
 } from "@/lib/direction-rules";
 import { sanitizeDraft, type OnboardingDraft } from "@/lib/onboarding-rules";
 import { sanitizeStep } from "@/lib/onboarding-steps";
+import { cycleKeyOf, cycleKeyOfIso } from "@/lib/recommendation-cycle";
 import {
   completeReading,
   sanitizeUserContents,
@@ -117,8 +118,15 @@ export const demoRepository: StackRepository = {
 
   async saveRecommendationSet(set: RecommendationSet) {
     // 이미 선택이 연결된 묶음은 덮어쓰지 않는다(선택·서재 기록과 어긋나지 않게)
+    // 새 회차의 묶음은 이전 회차에 선택이 있어도 저장할 수 있다(이전 선택과 서재 기록은 그대로 남는다)
     const current = readSet();
-    if (current && readUserContents().some((u) => u.setId === current.id)) return false;
+    if (
+      current &&
+      readUserContents().some((u) => u.setId === current.id) &&
+      cycleKeyOfIso(current.createdAt) >= cycleKeyOfIso(set.createdAt)
+    ) {
+      return false;
+    }
     write(RECOMMENDATION_KEY, set);
     return true;
   },
@@ -132,6 +140,10 @@ export const demoRepository: StackRepository = {
     const set = readSet();
     if (!set || set.id !== setId) return { status: "not-in-set" };
     const { outcome, list } = trySelect(readUserContents(), set, contentId, new Date().toISOString());
+    // 열어 둔 사이 추천 회차가 바뀌었다면 이전 회차의 자료를 뒤늦게 선택하지 못하게 한다(이미 선택한 자료의 재요청은 그대로 돌려준다)
+    if (outcome.status === "selected" && cycleKeyOfIso(set.createdAt) < cycleKeyOf(Date.now())) {
+      return { status: "expired" };
+    }
     if (outcome.status === "selected") write(USER_CONTENTS_KEY, list);
     return outcome;
   },

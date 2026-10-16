@@ -1,87 +1,102 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ACTIVE_READING_SECONDS, type StackDay } from "@/lib/stack-rules";
 
 const minutes = ACTIVE_READING_SECONDS / 60;
+const COLUMNS = 10;
+
+const statusOf = (d: StackDay) => (d.active ? "학습 기록 있음" : "학습 기록 없음");
+const nameOf = (d: StackDay) => `${d.label}${d.isToday ? "(오늘)" : ""}`;
 
 /**
- * 학습 스택 — 홈 상단의 간결한 영역 (PRD F4-02, DESIGN §9).
- * 28칸(7×4 연속 배열, 활성/비활성 이진)·오늘 구분(외곽선)·날짜 범위·5분 기준·날짜별 목록을 모두 유지하되,
- * 격자를 작게 하고 설명을 한 문장으로 줄여 추천을 밀어내지 않게 한다.
- * 칸은 장식이며 개별 조작 대상이 아니다. 같은 정보를 요약 문장(aria-label)과 날짜별 목록으로 함께 제공한다.
+ * 학습 스택 (PRD-v0.4 F4-02, DESIGN §9 결정 기록은 docs/ui-demo-decisions.md).
+ * 오늘을 포함한 최근 30일을 10열 3행의 연속 배열로 보여 준다(요일 주차 정렬이 아니다). 활성/비활성 이진 표현이다.
+ * 각 칸은 날짜와 기록 상태를 알려 주는 버튼이다. 누르거나 방향키로 옮기면 아래에 그 날의 상태가 보이고(터치와 키보드용),
+ * 화면 읽기 도구에는 칸의 이름("10월 3일, 학습 기록 있음")으로 전달한다. 날짜별 긴 목록은 두지 않는다.
+ * 기록이 없는 날은 "학습 기록 없음"이며 미충족이나 실패로 표현하지 않는다.
  */
 export function StudyStack({ days }: { days: StackDay[] }) {
-  const [open, setOpen] = useState(false);
+  const todayIndex = Math.max(0, days.findIndex((d) => d.isToday));
+  const [selected, setSelected] = useState(todayIndex);
+  const cells = useRef<(HTMLButtonElement | null)[]>([]);
   const activeCount = days.filter((d) => d.active).length;
   const first = days[0];
   const last = days[days.length - 1];
-  const summary = `최근 ${days.length}일(${first.label} ~ ${last.label}) 중 참여 기록이 있는 날은 ${activeCount}일이에요.`;
+
+  function move(to: number) {
+    const next = Math.min(days.length - 1, Math.max(0, to));
+    setSelected(next);
+    cells.current[next]?.focus();
+  }
+
+  function onKeyDown(e: React.KeyboardEvent, i: number) {
+    const step: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -COLUMNS, ArrowDown: COLUMNS };
+    if (e.key in step) {
+      e.preventDefault();
+      move(i + step[e.key]);
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      move(0);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      move(days.length - 1);
+    }
+  }
+
+  const current = days[selected];
 
   return (
-    <section aria-labelledby="stack-title" className="rounded-card border border-line bg-surface p-3">
-      <div className="flex min-h-12 flex-wrap items-center justify-between gap-x-3">
-        <h2 id="stack-title" className="text-card-title font-semibold">
-          학습 스택
-        </h2>
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls="stack-dates"
-          onClick={() => setOpen((v) => !v)}
-          className="-mr-2 inline-flex min-h-12 items-center rounded-btn px-2 text-caption font-semibold text-primary-ink"
-        >
-          {open ? "날짜별 보기 닫기" : "날짜별로 보기"}
-        </button>
-      </div>
+    <section aria-labelledby="stack-title">
+      <h2 id="stack-title" className="text-section-title font-bold">
+        학습 스택
+      </h2>
+      <div className="mt-3 rounded-card border border-line bg-surface px-4 py-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+          <p className="text-caption text-fg-muted">
+            {first.label} ~ {last.label}
+          </p>
+          <p className="text-caption font-semibold text-fg">
+            최근 {days.length}일, 학습한 날 {activeCount}일
+          </p>
+        </div>
 
-      <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
         <div
-          role="img"
-          aria-label={summary}
-          className="grid w-[154px] shrink-0 grid-cols-7 gap-1"
+          role="group"
+          aria-label={`최근 ${days.length}일 학습 기록, 학습한 날 ${activeCount}일. 방향키로 날짜를 옮길 수 있어요.`}
+          className="mt-2 grid max-w-[18rem] gap-1"
+          style={{ gridTemplateColumns: `repeat(${COLUMNS}, minmax(0, 1fr))` }}
         >
-          {days.map((d) => (
-            <span
+          {days.map((d, i) => (
+            <button
               key={d.date}
-              aria-hidden="true"
+              ref={(el) => {
+                cells.current[i] = el;
+              }}
+              type="button"
+              aria-label={`${nameOf(d)}, ${statusOf(d)}`}
+              aria-pressed={i === selected}
+              tabIndex={i === selected ? 0 : -1}
               data-stack-cell={d.active ? "active" : "inactive"}
-              className={`aspect-square rounded-sm border ${
-                d.active ? "border-primary-ink bg-primary" : "border-line bg-surface-subtle"
-              } ${d.isToday ? "outline-2 outline-offset-1 outline-fg" : ""}`}
-            />
+              data-today={d.isToday ? "true" : undefined}
+              onClick={() => setSelected(i)}
+              onKeyDown={(e) => onKeyDown(e, i)}
+              className={`relative flex aspect-square items-center justify-center rounded-sm border ${
+                d.active ? "border-primary bg-primary" : "border-line bg-surface-subtle"
+              } ${i === selected ? "outline-2 outline-offset-1 outline-fg" : ""}`}
+            >
+              {d.isToday && <span aria-hidden="true" className="size-1.5 rounded-full bg-fg" />}
+            </button>
           ))}
         </div>
-        <div className="min-w-[min(8.5rem,100%)] flex-1 text-caption text-fg-secondary">
-          <p className="font-semibold text-fg">
-            {first.label} ~ {last.label}
-            <span className="font-normal"> (오늘)</span>
-          </p>
-          <p className="mt-1">
-            최근 {days.length}일 중 참여 {activeCount}일{activeCount === 0 && ". 읽기 기록이 아직 없어요."}
-          </p>
-        </div>
+
+        {/* 칸의 이름이 같은 내용을 전달하므로 화면 읽기 도구에서는 숨긴다(눈으로 보는 확인용) */}
+        <p aria-hidden="true" data-stack-detail className="mt-2 text-caption font-semibold text-fg">
+          {nameOf(current)}: {statusOf(current)}
+        </p>
+
+        <p className="mt-1 text-caption text-fg-secondary">하루 총 {minutes}분 이상 읽으면 기록돼요.</p>
       </div>
-
-      <p className="mt-2 text-caption text-fg-secondary">
-        하루 합산 {minutes}분 이상 읽으면 채워져요. 접속하거나 선택하는 것만으로는 채워지지 않아요.
-      </p>
-
-      {open && (
-        <div id="stack-dates" className="mt-2 border-t border-line pt-2">
-          <ul className="space-y-1 text-caption text-fg-secondary">
-            {days.map((d) => (
-              <li key={d.date}>
-                {d.label}
-                {d.isToday ? " (오늘)" : ""}: {d.active ? "참여 기록 있음" : `${minutes}분 기준 미충족`}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 text-caption text-fg-muted">
-            학습 참여를 기록할 뿐, 이해도나 성과를 나타내지는 않아요.
-          </p>
-        </div>
-      )}
     </section>
   );
 }

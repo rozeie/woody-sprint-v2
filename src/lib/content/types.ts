@@ -8,6 +8,8 @@ export type ContentFull = {
   title: string;
   /** 간단한 소개 */
   summary: string;
+  /** 홈 카드용 한 문장 소개(약 30자 안팎, summary를 자른 것이 아니라 따로 쓴 문장) */
+  shortSummary: string;
   /** 카드에 보이는 핵심 학습 내용 */
   keyLearnings: string[];
   type: ContentType;
@@ -36,6 +38,12 @@ export const CONTENT_TYPE_LABEL: Record<ContentType, string> = {
 export type RecommendationCard = {
   contentId: string;
   title: string;
+  /** 자료 분류(학습 방식)의 key. 카드 아이콘을 고르는 데 쓴다 */
+  type: ContentType;
+  /** 홈 카드에 보이는 한 문장 소개(약 30자 안팎) */
+  shortSummary: string;
+  /** 이 자료의 주제 중 사용자가 확정한 학습 주제와 겹치는 것의 이름(최대 2개). 겹치는 것이 없으면 빈 배열 */
+  linkedTopicLabels: string[];
   summary: string;
   keyLearnings: string[];
   typeLabel: string;
@@ -50,6 +58,10 @@ export type ContentPreview = {
   contentId: string;
   title: string;
   typeLabel: string;
+  /** 간단한 소개(홈 카드에서는 짧은 소개만 보이므로 여기서 확인한다) */
+  summary: string;
+  /** 핵심 학습 내용(홈 카드에서 옮긴 짧은 항목) */
+  keyLearnings: string[];
   /** ① 다루는 주제 */
   subject: string;
   topicLabels: string[];

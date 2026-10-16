@@ -1,0 +1,124 @@
+# Stack UI 스타일 기준 (첫 진입 소개 화면과 온보딩)
+
+2026-10-16 기준 실제 구현을 기록한 문서다. 새 규칙을 정하지 않으며, 기록과 코드가 다르면 코드를 따른다.
+결정 배경은 `docs/ui-demo-decisions.md`, 원본 설계는 `DESIGN.md`(수정하지 않음)를 본다.
+범위: 소개 화면(`src/app/page.tsx`), 온보딩 1~4단계(`OnboardingForm.tsx`), 분석 화면(`AnalyzingScreen.tsx`), 5단계 결과(`DirectionScreen.tsx`).
+토큰은 모두 `src/app/globals.css`의 `@theme`에 있다. 화면에는 가운데 점 문자를 쓰지 않는다(`tests/no-middle-dot.test.mts`).
+
+## 1. 색상
+
+| 용도 | 값 | 토큰 |
+|---|---|---|
+| 화면 배경 | #F9FAFB | `bg-background` |
+| 카드, 입력, 시트 | #FFFFFF | `bg-surface` |
+| 보조 면(안내 박스, 미선택 칩, 라디오) | #F0F2F5 | `bg-surface-subtle` |
+| 글자 기본 | #1D2939 | `text-fg` |
+| 글자 보조, 흐린 보조 | #475467, #667085 | `text-fg-secondary`, `text-fg-muted` |
+| 카드 테두리, 연한 입력 테두리, 진행 바 미도달 | #D0D5DD | `border-line`, `bg-line` |
+| 입력 기본 테두리, 체크박스 테두리 | #667085 | `border-line-control` |
+| 주요 CTA 배경, hover, pressed | #15B574, #15B876, #10A66B | `bg-primary`, `-primary-hover`, `-primary-pressed` |
+| CTA 글자(흰색) | #FFFFFF | `text-on-primary` |
+| 선택된 칩, 라디오, 결과 화면 토스트 배경 | #333D4B | `bg-chip-selected` |
+| 비활성 배경, 글자 | #EAECF0, #667085 | `bg-disabled-bg`, `text-disabled-fg` |
+| 오류, 주의 | #B42318 / #FEF3F2, #854A0E / #FFFAEB | `danger`, `warning` 계열 |
+| 포커스 윤곽선 | #175CD3 | `--color-focus` |
+
+- 선택 상태: #333D4B 배경과 흰 글자. 체크 아이콘은 없고 크기는 변하지 않는다(`Chip.tsx`, 2단계 라디오, 바텀시트 칩).
+- 비활성 칩: `bg-disabled-bg text-disabled-fg opacity-60`이며 실제 `disabled`, hover 없음, `cursor-not-allowed`(`Chip.tsx`).
+- 비활성 주요 버튼: `aria-disabled`로 `bg-disabled-bg text-disabled-fg`(`Button.tsx`).
+- 그린 사용처: CTA, 홈 대표 섹션 배경(#15B574와 흰 글자), 하단 탭의 현재 탭 아이콘과 글자(#15B574), 진행 바 칸, 4단계 체크박스 체크, `+ 주제 추가`와 `적용` 텍스트 버튼, 그래픽 강조. 본문 글자 전체를 그린으로 칠하지 않는다.
+- 어두운 그린 `primary-ink`(#067647)는 진행 바에서는 쓰지 않는다. `primary-tint`(#E8FAF1)는 카드 배경에 쓰지 않는다(5단계에서 제거).
+- 알려진 한계: 흰 글자 대 #15B574 대비는 2.66 대 1이다. 사용자 지시로 유지하며 해결안은 결정 대기다.
+
+## 2. 글자 위계
+
+크기는 rem 토큰이라 사용자 글자 크기 설정을 따른다(`globals.css`). 줄바꿈은 어절 단위(`word-break: keep-all`).
+
+| 역할 | 크기/줄높이 | 굵기 | 클래스 | 사용 예 |
+|---|---|---|---|---|
+| 화면 제목 | 28/38 | bold | `text-page-title font-bold` | 소개, 단계 제목, 결과 제목 |
+| 섹션 제목 | 22/32 | bold | `text-section-title font-bold` | 결과의 각 영역 제목 |
+| 카드 제목 | 18/28 | semibold, 핵심 방향 라벨은 bold | `text-card-title` | 주제 카드, 시트 제목(bold), 나의 커리어 고민 제목 |
+| 본문 | 16/26 | regular | `text-body` | 설명, 카드 설명(`text-fg-secondary`) |
+| 버튼 라벨 | 16/24 | semibold | `text-label font-semibold` | 버튼, 칩, 라디오 |
+| 보조 라벨, 안내 | 14/22 | regular 또는 semibold | `text-caption` | 카테고리 이름(semibold, `text-fg-muted`), 서브 설명, 글자 수 |
+
+## 3. 카드와 레이아웃
+
+- 페이지 컨테이너: 좌우 16px(360px 미만), 20px(360px 이상), 32px(768px 이상), 본문 최대 720px 중앙(`PageContainer.tsx`).
+- 모서리: 카드 12px(`rounded-card`), 버튼 8px(`rounded-btn`), 칩 완전 둥글게(`rounded-chip`), 바텀시트 위쪽 모서리만 16px(`rounded-t-2xl`).
+- 결과 화면 카드 규칙: 흰 배경, 1px `border-line`, 패딩 16px(`p-4`), 카드 사이 12px(`space-y-3`), 영역 사이 32px(`mt-8`). 입력 요약만 보조 정보라 영역 위 간격 24px, 패딩 12px, 연한 테두리.
+- 핵심 학습 방향 카드는 다른 카드와 같은 중립 테두리를 쓰고, 굵은 제목과 왼쪽 나침반 그래픽으로만 강조한다(선택된 카드처럼 보이는 그린 테두리 없음).
+- 고민 요약 태그: `rounded-chip bg-surface-subtle px-2.5 py-0.5 text-caption font-semibold`, 선택이나 클릭 기능 없음, 줄바꿈 허용.
+- 4단계 안내 박스: `rounded-card bg-surface-subtle p-4 text-caption`.
+- 모바일 대응: 390px 기준으로 확인한다. 가로 넘침이 없어야 하고 긴 제목과 설명은 자르지 않고 카드 높이를 늘린다. 480px 이상에서 주제 그래픽이 72px에서 96px로 커진다.
+- 소개 화면: 제목과 설명은 위쪽 왼쪽 정렬, `시작하기`는 화면 하단(고정하지 않음), 하단 여백은 safe area 반영.
+- 입력 단계의 하단 CTA 바: `sticky bottom-0`, 상단 1px 테두리, `bg-background`, 높이 약 81px. 높이 520px 이하에서는 `position: relative`로 문서 흐름에 둔다(`globals.css`).
+- 상단 데모 배너(`DemoNotice.tsx`): `bg-surface-subtle`, 가운데 정렬, caption 크기. 모든 화면에서 유지한다.
+
+## 4. 그래픽
+
+- 구현: 인라인 SVG만 쓴다. 라이브러리와 외부 이미지는 쓰지 않는다. 위치는 `src/components/direction/TopicGraphic.tsx`.
+- 색: 그린(#15B574 `primary`), 중립(`line`, `surface`)만 쓴다. 의미 있는 수치, 점수, 평가처럼 보이는 표현은 넣지 않는다.
+- 종류: 흐름(정보구조, 인터랙션), 막대와 기준선(데이터와 지표), 겹친 카드(포트폴리오, 이력서, 과제), 연결 노드(리서치 그룹), 말풍선(협업 그룹), 격자(디자인 시스템과 기본). 주제 key에서 정해지며 사용자 추가 주제도 같은 규칙이다.
+- 배치: 카드 안 왼쪽에 그래픽(390px 72px 폭, 480px 이상 96px 폭), 가운데 제목과 설명, 오른쪽 위 더보기 버튼. 텍스트 공간을 우선하고 서로 겹치지 않는다.
+- 핵심 방향 카드는 왼쪽에 48px 나침반 그래픽(`CompassGraphic`), 오른쪽에 제목과 설명.
+- 장식 배경: 그래픽 뒤의 원형 그린 배경, 선택 상태처럼 보이는 강조 테두리는 쓰지 않는다(제거됨).
+- 접근성: 그래픽은 `aria-hidden`이며 의미는 텍스트가 전달한다.
+
+## 5. 버튼과 메뉴
+
+- 주요 CTA: `Button` 기본. 최소 높이 52px, 좌우 20px, 8px 모서리, #15B574와 흰 글자, hover와 pressed는 토큰(`Button.tsx`).
+- 보조 CTA: `variant="secondary"`, 흰 배경, `border-line-control`, 진한 글자.
+- 나란한 두 버튼: `compact`(좌우 12px)를 쓰고 폭 비율 2 대 3(보조 대 주요). 5단계 하단 CTA가 예다.
+- 텍스트 버튼: 그린 글자(`text-primary`), hover는 `text-primary-hover`, 최소 높이 48px. `+ 주제 추가`는 PlusIcon을 함께 쓴다. 비활성은 `text-disabled-fg`로 구분한다.
+- 더보기 버튼: 48px 정사각, 배경은 기본, hover, 열림 모두 투명, 아이콘 색만 `fg-muted`에서 `fg`로 바뀐다. 메뉴는 `role="menu"`, 항목 `삭제`(`text-danger`, 높이 48px).
+- 메뉴 닫기: 바깥 클릭과 Escape(포커스는 더보기 버튼으로 복귀). 아래 방향키와 Enter로 열 수 있다.
+- 키보드 포커스: 전역 `:focus-visible` 2px 파란 윤곽선, 간격 2px(`globals.css`). 라디오는 `peer-focus-visible`로 같은 윤곽선을 낸다. 터치 영역은 모두 48px 이상이다(최소 44px).
+- 재분석 확인창: 기본 `dialog` 모달(`ConfirmDialog`), 버튼은 `취소`(보조)와 `다시 분석하기`(주요).
+
+## 6. 바텀시트 (`AddTopicSheet.tsx`)
+
+- 기본 `dialog`의 모달이며 모든 화면 폭에서 아래에서 올라온다. 뒤는 `backdrop:bg-black/50`.
+- 헤더는 고정: 왼쪽 `학습 주제 추가`, 오른쪽 그린 `적용` 텍스트 버튼. X와 닫기 버튼은 없다. 주제 목록만 내부 스크롤, 시트 높이 최대 85dvh, 내부 콘텐츠 최대 720px.
+- 선택은 임시다. 칩을 눌러도 즉시 추가하거나 닫지 않고 `aria-pressed`로 상태를 전달하며 다시 누르면 해제된다. 선택한 항목이 없으면 `적용`은 비활성이다.
+- 이미 목록에 있는 주제는 선택지에서 빼고, 항목이 남지 않은 카테고리는 제목도 숨긴다.
+- 한도: 기존 주제와 임시 선택을 합쳐 최대 5개(`PROVISIONAL.maxSubTopics`). 한도에 닿으면 미선택 칩은 실제 `disabled`, 선택한 칩은 해제할 수 있고 해제하면 즉시 다시 활성화된다.
+- `적용`: 선택한 주제를 한 번에 기존 목록 뒤에 추가하고 시트가 내려가며 닫힌다. 중복 실행은 막는다. 토스트 `선택한 주제를 적용했어요` 5초.
+- 취소: 바깥 어두운 영역 클릭 또는 Escape이며 임시 선택은 저장하지 않고, 다시 열면 남아 있지 않다.
+- 스크롤과 포커스: 열린 동안 `body` 스크롤을 잠그고 닫으면 원래 위치를 유지한다. 포커스는 시트 안에 머물고, 닫히면 `+ 주제 추가` 버튼으로 돌아간다.
+- 움직임: `stack-sheet-up`(260ms), `stack-sheet-down`(220ms). 움직임 줄이기 설정에서는 전역 규칙으로 즉시 끝난다.
+
+## 7. 피드백
+
+- 입력 단계 토스트(`OnboardingForm.tsx`): `bg-fg` 배경에 흰 글자, `rounded-btn`, 하단 CTA 바 바로 위, `role="alert"`, 5초. 반복해서 눌러도 하나만 보이고 타이머만 다시 시작한다. 조건을 채우면 즉시 닫힌다. 스크롤이나 포커스를 강제로 옮기지 않는다.
+- 문구: 1단계 `고민을 선택하거나 기타에 입력해 주세요.`, 2단계 `현재 상황을 선택해 주세요.`, 4단계 `안내 내용을 확인하고 체크해 주세요.`. 3단계는 선택 입력이라 차단과 토스트가 없다.
+- 결과 화면 토스트(`DirectionScreen.tsx`): `bg-chip-selected`, `rounded-card`, 화면 아래 고정, `role="status"`. 삭제 직후 `실행 취소` 토스트 5초(마지막 한 건만 되돌림), 적용 토스트 5초, 주제 0개 확정 차단 토스트(`학습 주제를 1개 이상 추가해 주세요.`) 3초.
+- 실행 취소 복원은 삭제 전 위치와 내용을 유지한다. 복원하면 5개를 넘거나 같은 주제가 이미 있으면 막고 이유를 상태 문구로 남긴다.
+- 입력 오류: `TextArea`는 오류 시 `border-danger`와 아이콘, `aria-invalid`, `aria-describedby`로 연결한다. 글자 수는 `n/최대자`로 표시한다.
+- 선택 제한: 1단계 고민 칩은 3개, 한도에 닿으면 나머지가 실제 disabled가 되고 해제하면 재활성화된다. 기타는 개수에 포함하지 않는다. 안내는 상단 설명 한 줄(`#concern-help`)이 맡는다.
+- 분석 화면: 로딩 문구는 `role="status"`, 실패는 `Alert`(아이콘, 제목, 문구).
+
+## 8. 내비게이션
+
+온보딩에만 적용:
+- 상단 바에 서비스명을 두지 않고 왼쪽 쉐브론 뒤로가기만 둔다(`TopBar.tsx`, `ChevronLeftIcon`). 높이 48px, 진한 글자색, 투명 배경. 접근성 이름은 `이전 화면으로`(1단계), `이전 단계로`(2~4단계), `입력 화면으로`(분석과 결과).
+- 진행 표시(`ProgressSteps.tsx`): `n/5 단계이름`, 같은 폭 5칸. 지나온 칸과 현재 칸은 primary, 미도달 칸은 `bg-line`. 현재 위치는 글자와 `aria-valuetext`로 전달하고 5/5도 완료를 뜻하지 않는다(완료는 확정 버튼으로만).
+- 단계 이동은 `다음`과 뒤로가기만 한다. 입력은 이전 단계로 돌아가도 보존된다.
+- 소개 화면은 별도 머리글(서비스명 `Stack`, 높이 56px)을 쓴다. 온보딩 입력 단계의 하단 CTA 바 규칙은 3번 항목을 본다.
+
+다른 화면에서도 재사용 가능:
+- `PageContainer`(여백과 최대 너비), `DemoNotice`(상단 데모 고지), `Button`과 `ButtonLink`, `Chip`, `TextArea`, `Alert`, `icons.tsx`(`ChevronLeftIcon`, `PlusIcon` 등), 전역 포커스 윤곽선, 카드 규칙(3번), 토스트와 바텀시트 패턴(6, 7번).
+- `TopBar`는 현재 온보딩 화면만 쓴다. 미리보기와 리더는 자체 머리글과 `ArrowLeftIcon`을 쓰며 이번 기준에 포함하지 않았다.
+
+## 9. 코드에서 일관되지 않은 부분과 알려진 한계 (수정하지 않음)
+
+- 토스트 모양이 두 가지다. 입력 단계는 `bg-fg`와 `rounded-btn`과 CTA 바 위, 결과 화면은 `bg-chip-selected`와 `rounded-card`와 화면 하단 고정이다. 표시 시간도 5초와 3초가 섞여 있다(주제 0개 확정 차단만 3초).
+- 바텀시트의 칩과 상단 모서리(`rounded-t-2xl`), `shadow-lg`, `bg-black/50`은 토큰이 아닌 Tailwind 기본값이다. 시트 칩은 `Chip.tsx`를 쓰지 않고 같은 모양을 직접 그렸다.
+- 비활성 표현이 둘이다. 칩은 `opacity-60`을 더하고 주요 버튼은 더하지 않는다.
+- 흰 글자 대 #15B574 대비(2.66 대 1)와 흰 배경 위 #15B574 텍스트 버튼 대비 미달. 해결안 결정 대기.
+- 분석 화면의 입력 확인 구간에는 진행 표시가 없다.
+- 소개 화면 머리글(56px, 서비스명 있음)과 온보딩 상단 바(48px, 서비스명 없음)의 높이가 다르다.
+- `docs/ui-demo-decisions.md`에는 4칸 진행 바를 적은 이전 단계 기록(온보딩 4단계 개편 섹션)이 남아 있다. 현재 기준은 5칸이며 위 8번과 해당 문서의 "진행 표시 5단계" 섹션을 따른다.
+- 현재 구현은 `PRD-v0.3.md`와 일부 다르다(CTA 문구, 단계 구성, 결과 화면 문구). PRD 반영은 새 버전 승인 후에 한다.
+- 실기기 safe area, 모바일 키보드, 스크린리더 실제 낭독, 높이 520px 이하에서 토스트 배치는 확인하지 않았다.
