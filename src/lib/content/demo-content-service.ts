@@ -11,6 +11,7 @@ import {
   concernLabelsFor,
   pickRecommendations,
   shortageOf,
+  TYPE_DETAIL,
 } from "./recommend.ts";
 import {
   CONTENT_TYPE_LABEL,
@@ -128,7 +129,10 @@ export function createDemoContentService(
       return {
         contentId: c.id,
         title: c.title,
+        type: c.type,
         typeLabel: CONTENT_TYPE_LABEL[c.type],
+        linkedTopicLabels: item.matchedTopicKeys.filter((k) => c.topics.includes(k)).map(labelOf),
+        reason: TYPE_DETAIL[c.type],
         summary: c.summary,
         keyLearnings: [...c.keyLearnings],
         subject: c.preview.subject,

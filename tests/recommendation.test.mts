@@ -98,6 +98,11 @@ describe("예시 자료 데이터", () => {
     }
     const pv = await service.getPreview(set, cards[0].contentId);
     assert.ok(pv && pv.summary.length > 0 && pv.keyLearnings.length >= 3 && pv.topicLabels.length >= 1 && pv.connection.length > 0);
+    // 미리보기: 연결되는 고민 배지는 확정 주제와 자료 주제의 교집합, 짧은 추천 이유, 간결한 행동 예시
+    assert.ok(pv.linkedTopicLabels.length >= 1 && pv.reason.length > 0 && pv.reason.length < pv.connection.length && pv.type === cards[0].type);
+    for (const c of DEMO_CONTENTS) {
+      assert.ok(c.preview.actionAfter.every((a) => !a.includes("수 있어요") && [...a].length <= 36), c.id);
+    }
   });
 
   it("후보 부족 상태 재현용으로 자료가 없는 주제가 있다", () => {

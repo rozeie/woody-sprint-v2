@@ -48,7 +48,7 @@ const TYPE_SHORT: Record<ContentType, string> = {
 };
 
 /** 미리보기용: 접근 방식 설명 */
-const TYPE_DETAIL: Record<ContentType, string> = {
+export const TYPE_DETAIL: Record<ContentType, string> = {
   concept: "개념을 먼저 이해한 뒤 내 상황에 옮겨 보고 싶을 때 맞는 방식이에요.",
   case: "다른 프로젝트가 어떻게 풀렸는지 따라가며 내 상황에 비춰 보고 싶을 때 맞는 방식이에요.",
   practice: "직접 손을 움직이며 바로 해 보고 싶을 때 맞는 방식이에요.",

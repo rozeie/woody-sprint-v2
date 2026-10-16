@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ContentType, RecommendationCard as Card } from "@/lib/content/types";
 import { CaseIcon, ClockIcon, ConceptIcon, FrameworkIcon, PracticeIcon, TemplateIcon } from "@/components/ui/icons";
 
-const TYPE_ICON: Record<ContentType, typeof ConceptIcon> = {
+export const TYPE_ICON: Record<ContentType, typeof ConceptIcon> = {
   concept: ConceptIcon,
   case: CaseIcon,
   practice: PracticeIcon,
@@ -11,7 +11,7 @@ const TYPE_ICON: Record<ContentType, typeof ConceptIcon> = {
 };
 
 /** 카드 상단의 학습 방식 문구. 데이터의 분류(typeLabel)와 같은 5가지 학습 방식을 자료의 실제 내용에 맞게 풀어 쓴 표현이다. */
-const TYPE_PHRASE: Record<ContentType, string> = {
+export const TYPE_PHRASE: Record<ContentType, string> = {
   concept: "개념 이해하기",
   case: "사례 탐색",
   practice: "직접 실습해보기",

@@ -57,7 +57,13 @@ export type RecommendationCard = {
 export type ContentPreview = {
   contentId: string;
   title: string;
+  /** 자료 분류(학습 방식)의 key. 상단 요약의 아이콘과 학습 방식 문구를 고르는 데 쓴다 */
+  type: ContentType;
   typeLabel: string;
+  /** 연결되는 고민 배지: 사용자가 확정한 학습 주제와 이 자료의 주제의 실제 교집합(홈 카드와 같은 기준, 개수 제한 없음). 없으면 빈 배열 */
+  linkedTopicLabels: string[];
+  /** 연결되는 이유를 한 문장으로 짧게(이 자료의 학습 방식에 맞는 상황). 새 사실을 만들지 않고 기존 학습 방식 설명을 쓴다 */
+  reason: string;
   /** 간단한 소개(홈 카드에서는 짧은 소개만 보이므로 여기서 확인한다) */
   summary: string;
   /** 핵심 학습 내용(홈 카드에서 옮긴 짧은 항목) */
