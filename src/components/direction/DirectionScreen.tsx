@@ -2,14 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { CONCERN_CHIPS, CONCERN_GROUPS, PROVISIONAL } from "@/config/ui-provisional";
+import type { TopicItem } from "@/lib/direction-rules";
+import { CONCERN_CHIPS, PROVISIONAL } from "@/config/ui-provisional";
 import { getAnalysisService, readDemoMode } from "@/lib/analysis";
 import { getContentService } from "@/lib/content";
 import { getRepository } from "@/lib/data";
 import {
   addTopic,
-  availableToAdd,
   canConfirm,
+  isEdited,
   removeTopic,
   toConfirmed,
   topicsFromAnalysis,
@@ -17,13 +18,20 @@ import {
 } from "@/lib/direction-rules";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { Chip } from "@/components/ui/Chip";
+import { ProgressSteps } from "@/components/onboarding/ProgressSteps";
 import { Spinner } from "@/components/ui/Spinner";
-import { AlertIcon } from "@/components/ui/icons";
+import { AlertIcon, PlusIcon } from "@/components/ui/icons";
+import { AddTopicSheet } from "./AddTopicSheet";
+import { CompassGraphic, MoreIcon, TopicGraphic } from "./TopicGraphic";
 
 const SITUATION_LABEL = { job_seeker: "취업 준비생", junior: "주니어 실무자" } as const;
 const chipLabel = new Map(CONCERN_CHIPS.map((c) => [c.key, c.label]));
 const ADD_TOGGLE_ID = "add-toggle";
+const UNDO_MS = 5000;
+const TOAST_MS = 3000;
+const APPLY_TOAST_MS = 5000;
+
+type UndoState = { topic: TopicItem; index: number };
 
 /** 저장된 결과 초안을 불러온 뒤 결과 화면을 보여준다. 결과가 없으면 입력 화면으로 돌려보낸다. */
 export function DirectionScreen() {
@@ -69,6 +77,13 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
   const [reanalyzing, setReanalyzing] = useState(false);
   const [reanalyzeFailed, setReanalyzeFailed] = useState(false);
   const [notice, setNotice] = useState("");
+  const [menuKey, setMenuKey] = useState<string | null>(null); // 더보기 메뉴가 열린 주제
+  const [undo, setUndo] = useState<UndoState | null>(null); // 방금 삭제한 주제(5초간 되돌릴 수 있음)
+  const [toast, setToast] = useState<string | null>(null); // 짧은 토스트(주제 추가, 확정 불가 안내)
+  const [confirmOpen, setConfirmOpen] = useState(false); // 수정한 주제가 있을 때 재분석 확인창
+  const [confirming, setConfirming] = useState(false);
+  const addToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const busyRef = useRef(false);
   const attemptRef = useRef(0);
   const confirmingRef = useRef(false);
@@ -84,6 +99,46 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
     el?.focus();
   }, [focusRequest]);
 
+  // 메뉴가 열려 있을 때 바깥 클릭과 Escape로 닫는다
+  useEffect(() => {
+    if (menuKey === null) return;
+    function onPointerDown(e: PointerEvent) {
+      if (!(e.target instanceof Element) || !e.target.closest("[data-topic-menu]")) setMenuKey(null);
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      const key = menuKey;
+      setMenuKey(null);
+      if (key) requestFocus(key); // 닫은 뒤 더보기 버튼으로 포커스를 돌려준다
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuKey]);
+
+  useEffect(
+    () => () => {
+      if (undoTimer.current) clearTimeout(undoTimer.current);
+      if (addToastTimer.current) clearTimeout(addToastTimer.current);
+    },
+    [],
+  );
+
+  function showToast(message: string, ms = TOAST_MS) {
+    if (addToastTimer.current) clearTimeout(addToastTimer.current);
+    setToast(message);
+    addToastTimer.current = setTimeout(() => setToast(null), ms);
+  }
+
+  function clearUndo() {
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    undoTimer.current = null;
+    setUndo(null);
+  }
+
   function requestFocus(target: string) {
     setFocusRequest((prev) => ({ target, n: (prev?.n ?? 0) + 1 }));
   }
@@ -94,7 +149,6 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
   const hasTopics = canConfirm(topics);
   const limit = PROVISIONAL.reanalyzeLimit;
   const limitReached = limit !== null && draft.reanalysisCount >= limit;
-  const addable = availableToAdd(CONCERN_CHIPS, topics);
 
   // 데모 임시 저장: 편집할 때마다 저장(서버 저장이 아님)
   function commit(next: DirectionDraft) {
@@ -106,19 +160,62 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
     if (reanalyzing) return;
     const index = topics.findIndex((t) => t.key === key);
     const neighbor = topics[index + 1] ?? topics[index - 1];
+    const removed = topics[index];
     commit({ ...draft, topics: removeTopic(topics, key) });
+    setMenuKey(null);
     setNotice(`‘${label}’ 주제를 삭제했어요.`);
+    if (removed) {
+      if (undoTimer.current) clearTimeout(undoTimer.current);
+      setUndo({ topic: removed, index });
+      undoTimer.current = setTimeout(clearUndo, UNDO_MS);
+    }
     requestFocus(neighbor ? neighbor.key : ADD_TOGGLE_ID); // 남은 항목 또는 주제 추가 버튼으로
   }
 
-  function onAdd(key: string, label: string) {
+  function onUndo() {
+    if (!undo || reanalyzing) return;
+    const { topic, index } = undo;
+    if (topics.some((t) => t.key === topic.key)) {
+      clearUndo();
+      setNotice(`‘${topic.label}’ 주제가 이미 목록에 있어 복원하지 않았어요.`);
+      return;
+    }
+    if (topics.length >= maxTopics) {
+      // 복원하면 최대 개수를 넘으므로 막고 이유를 알린다. 이 안내는 사라지지 않고 남는다.
+      clearUndo();
+      setNotice(
+        `세부 주제는 최대 ${maxTopics}개까지라 ‘${topic.label}’ 주제를 복원할 수 없어요. 다른 주제를 삭제한 뒤 다시 추가해 주세요.`,
+      );
+      return;
+    }
+    const next = [...topics];
+    next.splice(Math.min(index, next.length), 0, topic); // 삭제 전 위치와 내용 그대로
+    commit({ ...draft, topics: next });
+    clearUndo();
+    setNotice(`‘${topic.label}’ 주제를 복원했어요.`);
+    requestFocus(topic.key);
+  }
+
+  /** 시트에서 임시로 고른 주제를 한 번에 기존 목록 뒤에 붙인다(중복과 최대 개수는 여기서도 다시 막는다). */
+  function onApplyTopics(keys: string[]) {
     if (reanalyzing) return;
-    const result = addTopic(topics, { key, label }, maxTopics);
-    if (result.blocked) return;
-    commit({ ...draft, topics: result.topics });
-    if (result.topics.length >= maxTopics) setAddOpen(false); // 최대에 닿으면 패널을 닫아 둔다(삭제 후 저절로 다시 열리지 않게)
-    setNotice(`‘${label}’ 주제를 추가했어요.`);
-    requestFocus(ADD_TOGGLE_ID); // 누른 칩이 목록에서 사라지므로 추가 버튼으로
+    let next = topics;
+    for (const key of keys) {
+      const result = addTopic(next, { key, label: chipLabel.get(key) ?? key }, maxTopics);
+      if (!result.blocked) next = result.topics;
+    }
+    if (next.length !== topics.length) {
+      commit({ ...draft, topics: next });
+      showToast("선택한 주제를 적용했어요", APPLY_TOAST_MS);
+    }
+    setAddOpen(false); // 시트가 내려가며 닫힌다
+  }
+
+  /** 추가하거나 삭제한 주제가 있으면 확인창을 먼저 보이고, 없으면 바로 재분석한다. */
+  function onReanalyzeClick() {
+    if (busyRef.current || limitReached || confirmingRef.current) return;
+    if (isEdited(analysis, topics)) setConfirmOpen(true);
+    else void onReanalyze();
   }
 
   async function onReanalyze() {
@@ -144,6 +241,8 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
         reanalysisCount: variant,
       });
       setAddOpen(false);
+      clearUndo();
+      setMenuKey(null);
       setNotice("새로운 분석 결과로 바꿨어요. 이전에 수정한 세부 주제는 새 결과로 대체됐어요.");
     } catch {
       setReanalyzeFailed(true); // 기존 결과·편집 내용은 그대로 둔다
@@ -154,8 +253,13 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
   }
 
   async function onConfirm() {
-    if (!hasTopics || reanalyzing || confirmingRef.current) return; // 0개 확정 불가·중복 차단
+    if (reanalyzing || confirmingRef.current) return; // 중복 실행 차단
+    if (!hasTopics) {
+      showToast("학습 주제를 1개 이상 추가해 주세요."); // 0개 확정 불가
+      return;
+    }
     confirmingRef.current = true;
+    setConfirming(true);
     const repo = getRepository();
     const confirmed = toConfirmed(draft, new Date().toISOString());
     const { ok } = await repo.confirmDirection(confirmed);
@@ -179,43 +283,53 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
 
   return (
     <div className="pb-10">
-      <h1 className="text-page-title font-bold">AI가 제안한 학습 방향</h1>
+      <div className="mb-6">
+        <ProgressSteps current={5} />
+      </div>
+      <h1 className="text-page-title font-bold">Stack이 제안하는 학습 방향</h1>
       <p className="mt-2 text-body text-fg-secondary">
-        입력하신 내용만으로 만든 제안이에요. 능력이나 수준을 평가한 결과가 아니고, 아래에서 확인하고 고칠 수
-        있어요.
-      </p>
-      <p className="mt-2 text-caption text-fg-muted">
-        모의 분석 결과예요. 실제 AI가 아니라 입력한 칩에 맞춰 미리 만든 문장이에요.
+        입력한 고민을 바탕으로 제안한 학습 방향이에요. 나에게 맞는지 확인하고 세부 주제를 조정해 주세요.
       </p>
 
       {/* 1. 입력한 고민 */}
-      <section aria-labelledby="sec-input" className="mt-8">
-        <h2 id="sec-input" className="text-section-title font-bold">
-          내가 입력한 고민
+      <section aria-labelledby="sec-input" className="mt-6">
+        <h2 id="sec-input" className="text-card-title font-semibold text-fg">
+          나의 커리어 고민
         </h2>
-        <dl className="mt-3 space-y-3 rounded-card bg-surface p-4 text-body">
+        <dl className="mt-2 space-y-2 rounded-card border border-line bg-surface px-3 py-2.5 text-caption text-fg">
+          {input.situation && (
+            <div>
+              <dt className="text-caption font-semibold text-fg-muted">현재 포지션</dt>
+              <dd>{SITUATION_LABEL[input.situation]}</dd>
+            </div>
+          )}
           {input.concernKeys.length > 0 && (
             <div>
-              <dt className="text-caption font-semibold text-fg-secondary">고민 영역</dt>
-              <dd>{input.concernKeys.map((k) => chipLabel.get(k) ?? k).join(", ")}</dd>
+              <dt className="text-caption font-semibold text-fg-muted">고민 영역</dt>
+              <dd>
+                <ul className="mt-1 flex flex-wrap gap-1.5">
+                  {input.concernKeys.map((k) => (
+                    <li
+                      key={k}
+                      className="rounded-chip bg-surface-subtle px-2.5 py-0.5 text-caption font-semibold text-fg"
+                    >
+                      {chipLabel.get(k) ?? k}
+                    </li>
+                  ))}
+                </ul>
+              </dd>
             </div>
           )}
           {input.otherSelected && input.otherText.trim() && (
             <div>
-              <dt className="text-caption font-semibold text-fg-secondary">기타</dt>
+              <dt className="text-caption font-semibold text-fg-muted">기타</dt>
               <dd className="whitespace-pre-wrap">{input.otherText}</dd>
             </div>
           )}
           {input.detailText.trim() && (
             <div>
-              <dt className="text-caption font-semibold text-fg-secondary">추가 설명</dt>
+              <dt className="text-caption font-semibold text-fg-muted">추가 설명</dt>
               <dd className="whitespace-pre-wrap">{input.detailText}</dd>
-            </div>
-          )}
-          {input.situation && (
-            <div>
-              <dt className="text-caption font-semibold text-fg-secondary">현재 상황</dt>
-              <dd>{SITUATION_LABEL[input.situation]}</dd>
             </div>
           )}
         </dl>
@@ -224,9 +338,9 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
       {/* 2. 해석한 어려움 */}
       <section aria-labelledby="sec-interpretation" className="mt-8">
         <h2 id="sec-interpretation" className="text-section-title font-bold">
-          AI가 해석한 현재 어려움
+          Stack이 정리한 현재 어려움
         </h2>
-        <p className="mt-3 text-body">{analysis.interpretation}</p>
+        <p className="mt-3 rounded-card border border-line bg-surface p-4 text-body">{analysis.interpretation}</p>
       </section>
 
       {/* 3. 핵심 학습 방향 (읽기 전용) */}
@@ -235,48 +349,94 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
           핵심 학습 방향
         </h2>
         <div className="mt-3 rounded-card border border-line bg-surface p-4">
-          <p className="text-card-title font-semibold">{analysis.coreDirection.label}</p>
-          <p className="mt-2 text-body text-fg-secondary">{analysis.coreDirection.description}</p>
-          <p className="mt-3 text-caption text-fg-muted">
-            AI가 제안한 항목이라 직접 고칠 수 없어요. 방향이 맞지 않으면 다시 분석하거나 입력 화면에서 고민을
-            바꿔 주세요.
-          </p>
+          <div className="flex items-start gap-4">
+            <CompassGraphic className="size-12 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-card-title font-bold">{analysis.coreDirection.label}</p>
+              <p className="mt-1 text-body text-fg-secondary">{analysis.coreDirection.description}</p>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* 4. 세부 학습 주제 (삭제·추가) */}
       <section aria-labelledby="sec-topics" className="mt-8">
-        <h2 id="sec-topics" className="text-section-title font-bold">
-          세부 학습 주제
-        </h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="sec-topics" className="text-section-title font-bold">
+            세부 학습 주제
+          </h2>
+          <button
+            id={ADD_TOGGLE_ID}
+            type="button"
+            aria-expanded={addOpen}
+            aria-haspopup="dialog"
+            aria-disabled={atMax || reanalyzing || undefined}
+            onClick={() => {
+              if (atMax || reanalyzing) return;
+              setAddOpen((v) => !v);
+            }}
+            className="inline-flex min-h-12 shrink-0 items-center gap-1 rounded-btn px-2 text-label font-semibold text-primary transition-colors duration-150 hover:text-primary-hover aria-disabled:cursor-not-allowed aria-disabled:text-disabled-fg aria-disabled:hover:text-disabled-fg"
+          >
+            <PlusIcon />
+            주제 추가
+          </button>
+        </div>
         <p className="mt-1 text-caption text-fg-secondary">
-          AI가 2~3개를 제안했어요. 맞지 않으면 삭제하고, 필요한 주제는 추가할 수 있어요.
+          추천 주제는 최대 {maxTopics}개까지 추가하거나 삭제해 조정할 수 있어요.
         </p>
 
         <ul className="mt-3 space-y-3">
-          {topics.map((t) => (
-            <li key={t.key} className="rounded-card border border-line bg-surface p-4">
-              <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+          {topics.map((t) => {
+            const open = menuKey === t.key;
+            return (
+              <li
+                key={t.key}
+                data-topic-card={t.key}
+                className="relative flex items-start gap-3 rounded-card border border-line bg-surface p-4 pr-14"
+              >
+                <TopicGraphic topicKey={t.key} className="mt-1 h-[3.375rem] w-18 shrink-0 min-[480px]:h-[4.5rem] min-[480px]:w-24" />
                 <div className="min-w-0 flex-1">
                   <p className="text-card-title font-semibold">{t.label}</p>
-                  <p className="mt-1 text-caption text-fg-muted">
-                    {t.source === "ai" ? "AI 제안" : "내가 추가"}
-                  </p>
-                  {t.why && <p className="mt-2 text-body text-fg-secondary">{t.why}</p>}
+                  {t.source === "user" && <p className="mt-1 text-caption text-fg-muted">내가 추가</p>}
+                  {t.why && <p className="mt-1 text-body text-fg-secondary">{t.why}</p>}
                 </div>
-                <button
-                  type="button"
-                  data-remove={t.key}
-                  aria-label={`‘${t.label}’ 주제 삭제`}
-                  aria-disabled={reanalyzing || undefined}
-                  onClick={() => onRemove(t.key, t.label)}
-                  className="inline-flex min-h-12 items-center rounded-btn bg-danger-bg px-4 text-label font-semibold text-danger transition-colors duration-150 aria-disabled:cursor-not-allowed aria-disabled:bg-disabled-bg aria-disabled:text-disabled-fg"
-                >
-                  삭제
-                </button>
-              </div>
-            </li>
-          ))}
+                <div data-topic-menu className="absolute top-1 right-1 z-10">
+                  <button
+                    type="button"
+                    data-remove={t.key}
+                    aria-label={`‘${t.label}’ 주제 더보기 메뉴`}
+                    aria-haspopup="menu"
+                    aria-expanded={open}
+                    aria-disabled={reanalyzing || undefined}
+                    onClick={() => {
+                      if (reanalyzing) return;
+                      setMenuKey(open ? null : t.key);
+                    }}
+                    onKeyDown={(e) => {
+                      if (reanalyzing) return;
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setMenuKey(t.key);
+                      }
+                    }}
+                    className="inline-flex size-12 items-center justify-center rounded-btn bg-transparent text-fg-muted transition-colors duration-150 hover:bg-transparent hover:text-fg aria-expanded:bg-transparent aria-expanded:text-fg aria-disabled:cursor-not-allowed aria-disabled:text-disabled-fg"
+                  >
+                    <MoreIcon />
+                  </button>
+                  {open && (
+                    <TopicMenu
+                      label={t.label}
+                      onDelete={() => onRemove(t.key, t.label)}
+                      onClose={() => {
+                        setMenuKey(null);
+                        requestFocus(t.key);
+                      }}
+                    />
+                  )}
+                </div>
+              </li>
+            );
+          })}
         </ul>
 
         <p role="status" className="mt-2 min-h-6 text-caption text-fg-secondary">
@@ -289,69 +449,37 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
             <span>세부 주제가 하나도 없으면 확정할 수 없어요. 아래에서 주제를 추가해 주세요.</span>
           </p>
         )}
+      </section>
 
-        <div className="mt-3">
-          <button
-            id={ADD_TOGGLE_ID}
-            type="button"
-            aria-expanded={addOpen}
-            aria-controls="add-panel"
-            aria-disabled={atMax || reanalyzing || undefined}
-            aria-describedby="add-hint"
-            onClick={() => {
-              if (atMax || reanalyzing) return;
-              setAddOpen((v) => !v);
-            }}
-            className="inline-flex min-h-13 w-full items-center justify-center rounded-btn border border-line-control bg-surface px-5 text-label font-semibold text-fg transition-colors duration-150 hover:bg-surface-subtle aria-disabled:cursor-not-allowed aria-disabled:border-transparent aria-disabled:bg-disabled-bg aria-disabled:text-disabled-fg aria-disabled:hover:bg-disabled-bg"
-          >
-            {addOpen && !atMax ? "주제 추가 닫기" : "주제 추가"}
-          </button>
-          <p id="add-hint" className="mt-1 text-caption text-fg-secondary">
-            {atMax
-              ? `세부 주제는 최대 ${maxTopics}개까지 둘 수 있어요(데모 임시 기준). 추가하려면 먼저 삭제해 주세요.`
-              : `최대 ${maxTopics}개까지 둘 수 있어요(데모 임시 기준).`}
-          </p>
+      {toast && (
+        <div
+          role="status"
+          className={`fixed left-1/2 z-30 w-[calc(100%-2rem)] max-w-[680px] -translate-x-1/2 rounded-card bg-chip-selected px-4 py-3 text-caption text-surface shadow-lg ${
+            undo ? "bottom-20" : "bottom-4"
+          }`}
+        >
+          {toast}
         </div>
+      )}
 
-        {addOpen && !atMax && (
-          <div id="add-panel" className="mt-3 rounded-card bg-surface p-4">
-            <p className="text-label font-semibold">추가할 주제를 눌러 주세요</p>
-            {addable.length === 0 ? (
-              <p className="mt-2 text-caption text-fg-secondary">추가할 수 있는 주제가 더 없어요.</p>
-            ) : (
-              CONCERN_GROUPS.map((group) => {
-                const items = group.chips.filter((c) => addable.some((a) => a.key === c.key));
-                if (items.length === 0) return null;
-                return (
-                  <div key={group.name} role="group" aria-label={group.name} className="mt-3">
-                    <p className="text-caption font-semibold text-fg-secondary">{group.name}</p>
-                    <div className="mt-1 flex flex-wrap gap-x-2">
-                      {items.map((c) => (
-                        <Chip
-                          key={c.key}
-                          label={c.label}
-                          selected={false}
-                          onClick={() => onAdd(c.key, c.label)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        )}
-      </section>
+      {undo && (
+        <div
+          role="status"
+          className="fixed bottom-4 left-1/2 z-30 flex w-[calc(100%-2rem)] max-w-[680px] -translate-x-1/2 items-center justify-between gap-3 rounded-card bg-chip-selected py-1 pr-1 pl-4 text-caption text-surface shadow-lg"
+        >
+          <span className="min-w-0">‘{undo.topic.label}’ 주제를 삭제했어요.</span>
+          <button
+            type="button"
+            data-undo
+            onClick={onUndo}
+            className="inline-flex min-h-12 shrink-0 items-center rounded-btn px-3 text-label font-semibold text-surface underline underline-offset-2"
+          >
+            실행 취소
+          </button>
+        </div>
+      )}
 
-      {/* 5. 간단 설명 */}
-      <section aria-labelledby="sec-summary" className="mt-8">
-        <h2 id="sec-summary" className="text-section-title font-bold">
-          추천 학습 방향 설명
-        </h2>
-        <p className="mt-3 text-body">{analysis.directionSummary}</p>
-      </section>
-
-      {/* 6. 다시 분석하기 / 확정 */}
+      {/* 5. 다시 분석하기 / 확정 */}
       <section aria-label="결과 확정" className="mt-8">
         {reanalyzeFailed && (
           <div className="mb-4">
@@ -361,44 +489,121 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
           </div>
         )}
 
-        <Button
-          variant="secondary"
-          onClick={onReanalyze}
-          aria-disabled={reanalyzing || limitReached || undefined}
-          aria-describedby="reanalyze-hint"
-        >
-          {reanalyzing ? (
-            <span className="inline-flex items-center gap-2">
-              <Spinner />
-              분석 중…
-            </span>
-          ) : (
-            "다시 분석하기"
-          )}
-        </Button>
-        <p id="reanalyze-hint" className="mt-1 text-caption text-fg-secondary">
-          {limitReached
-            ? "다시 분석할 수 있는 횟수를 모두 사용했어요."
-            : "같은 입력으로 다시 분석해요. 지금까지 수정한 세부 주제는 새 결과로 바뀌어요."}
-        </p>
-
-        <div className="mt-6">
-          <Button
-            onClick={onConfirm}
-            aria-disabled={!hasTopics || reanalyzing || undefined}
-            aria-describedby="confirm-hint"
-          >
-            이 학습 방향으로 확정하기
-          </Button>
-          <p id="confirm-hint" className="mt-1 text-caption text-fg-secondary">
-            {!hasTopics
-              ? "세부 주제를 1개 이상 남겨야 확정할 수 있어요."
-              : reanalyzing
-                ? "분석이 끝나면 확정할 수 있어요."
-                : "확정하면 이 방향을 기준으로 홈에 추천 자료 2개가 나와요(모의 추천이에요)."}
-          </p>
+        <div className="flex gap-3">
+          <div className="min-w-0 flex-[2]">
+            <Button
+              variant="secondary"
+              compact
+              onClick={onReanalyzeClick}
+              aria-disabled={reanalyzing || limitReached || confirming || undefined}
+            >
+              {reanalyzing ? (
+                <span className="inline-flex items-center gap-2">
+                  <Spinner />
+                  분석 중…
+                </span>
+              ) : (
+                "다시 분석하기"
+              )}
+            </Button>
+          </div>
+          <div className="min-w-0 flex-[3]">
+            <Button compact onClick={onConfirm} aria-disabled={reanalyzing || confirming || undefined}>
+              확정하기
+            </Button>
+          </div>
         </div>
+        {limitReached && (
+          <p className="mt-2 text-caption text-fg-secondary">다시 분석할 수 있는 횟수를 모두 사용했어요.</p>
+        )}
       </section>
+
+      <AddTopicSheet
+        open={addOpen}
+        existingKeys={topics.map((t) => t.key)}
+        maxTopics={maxTopics}
+        onApply={onApplyTopics}
+        onCancel={() => setAddOpen(false)}
+        onClosed={() => requestFocus(ADD_TOGGLE_ID)}
+      />
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          void onReanalyze();
+        }}
+      />
+    </div>
+  );
+}
+
+/** 재분석 확인창. 기본 dialog 요소를 쓰므로 포커스 가두기, Escape 닫기, 닫은 뒤 포커스 복귀를 브라우저가 처리한다. */
+function ConfirmDialog({ open, onCancel, onConfirm }: { open: boolean; onCancel: () => void; onConfirm: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (open && !el.open) el.showModal();
+    if (!open && el.open) el.close();
+  }, [open]);
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby="reanalyze-confirm-text"
+      onCancel={(e) => {
+        e.preventDefault(); // Escape: 닫기만 하고 수정 내용은 유지
+        onCancel();
+      }}
+      className="m-auto w-[calc(100%-2rem)] max-w-sm rounded-card border border-line bg-surface p-5 text-fg shadow-lg backdrop:bg-black/40"
+    >
+      <p id="reanalyze-confirm-text" className="text-body">
+        다시 분석하면 추가하거나 삭제한 학습 주제가 새 결과로 바뀌어요.
+      </p>
+      <div className="mt-5 flex gap-3">
+        <div className="min-w-0 flex-1">
+          <Button variant="secondary" compact autoFocus onClick={onCancel}>
+            취소
+          </Button>
+        </div>
+        <div className="min-w-0 flex-1">
+          <Button compact onClick={onConfirm}>
+            다시 분석하기
+          </Button>
+        </div>
+      </div>
+    </dialog>
+  );
+}
+
+/** 주제 더보기 메뉴. 열리면 '삭제' 항목으로 포커스가 가고, 방향키·Tab·Escape로 조작한다(Escape와 바깥 클릭은 부모가 처리). */
+function TopicMenu({ label, onDelete, onClose }: { label: string; onDelete: () => void; onClose: () => void }) {
+  const itemRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    itemRef.current?.focus();
+  }, []);
+  return (
+    <div
+      role="menu"
+      aria-label={`‘${label}’ 주제 메뉴`}
+      className="absolute top-11 right-0 min-w-32 rounded-card border border-line bg-surface p-1 shadow-lg"
+    >
+      <button
+        ref={itemRef}
+        type="button"
+        role="menuitem"
+        onClick={onDelete}
+        onKeyDown={(e) => {
+          if (e.key === "Tab" || e.key === "ArrowDown" || e.key === "ArrowUp") {
+            e.preventDefault(); // 항목이 하나뿐이라 포커스를 메뉴 안에 둔다
+            if (e.key === "Tab") onClose();
+          }
+        }}
+        className="inline-flex min-h-12 w-full items-center rounded-btn px-3 text-label font-semibold text-danger hover:bg-danger-bg"
+      >
+        삭제
+      </button>
     </div>
   );
 }

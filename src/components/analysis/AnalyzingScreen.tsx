@@ -9,6 +9,7 @@ import { topicsFromAnalysis } from "@/lib/direction-rules";
 import { validateDraft, type OnboardingDraft } from "@/lib/onboarding-rules";
 import { Alert } from "@/components/ui/Alert";
 import { Button, ButtonLink } from "@/components/ui/Button";
+import { ProgressSteps } from "@/components/onboarding/ProgressSteps";
 import { Spinner } from "@/components/ui/Spinner";
 
 type View = { phase: "checking" | "loading" | "error"; slow: boolean };
@@ -129,6 +130,9 @@ export function AnalyzingScreen() {
   if (view.phase === "error") {
     return (
       <div>
+        <div className="mb-6">
+          <ProgressSteps current={4} />
+        </div>
         <h1 ref={headingRef} tabIndex={-1} className="text-page-title font-bold outline-offset-4">
           분석을 끝내지 못했어요
         </h1>
@@ -155,6 +159,9 @@ export function AnalyzingScreen() {
 
   return (
     <div>
+      <div className="mb-6">
+        <ProgressSteps current={4} />
+      </div>
       <h1 ref={headingRef} tabIndex={-1} className="text-page-title font-bold outline-offset-4">
         학습 방향을 분석하고 있어요
       </h1>

@@ -52,10 +52,11 @@ describe("모의 분석 결과 형태", () => {
     assert.notEqual(a, b);
   });
 
-  it("해석에는 사용자가 입력한 고민이 언급된다", () => {
+  it("해석은 선택 항목을 나열하지 않고 어려움 요약만 담는다", () => {
     const r = buildMockAnalysis(input({ concernKeys: [keys[0]], otherSelected: true, otherText: "스펙 합의" }), 0);
-    assert.ok(r.interpretation.includes("사용자 리서치"));
-    assert.ok(r.interpretation.includes("스펙 합의"));
+    assert.equal(r.interpretation.includes("사용자 리서치"), false);
+    assert.equal(r.interpretation.includes("스펙 합의"), false);
+    assert.ok(r.interpretation.includes("막막함"));
   });
 
   it("점수·등급·수준 단정 표현이 없다 (능력 평가·점수화 금지)", () => {

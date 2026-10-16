@@ -20,16 +20,10 @@ function rotate<T>(list: readonly T[], by: number): T[] {
   return [...list.slice(n), ...list.slice(0, n)];
 }
 
-function shorten(text: string, max: number): string {
-  const t = text.trim().replace(/\s+/g, " ");
-  return t.length > max ? `${t.slice(0, max)}…` : t;
-}
-
 export function buildMockAnalysis(input: OnboardingDraft, variant: number): AnalysisResult {
   const chosen = input.concernKeys
     .map((k) => chipByKey.get(k))
     .filter((c): c is NonNullable<typeof c> => c !== undefined);
-  const hasOther = input.otherSelected && input.otherText.trim().length > 0;
 
   const groupName = chosen.length > 0 ? chosen[0].group : "기타";
   const fixture = GROUP_FIXTURES[groupName] ?? GROUP_FIXTURES["기타"];
@@ -51,16 +45,12 @@ export function buildMockAnalysis(input: OnboardingDraft, variant: number): Anal
     why: TOPIC_WHY[key] ?? "이 주제와 연결된 학습을 살펴봐요.",
   }));
 
-  const inputParts = [
-    ...chosen.map((c) => c.label),
-    ...(hasOther ? [`기타: ${shorten(input.otherText, 30)}`] : []),
-  ];
   const situation = input.situation ? SITUATION_PHRASE[input.situation] : "지금 상황에서";
 
   return {
     interpretation:
-      `‘${inputParts.join(", ")}’ 고민을 보면, ${situation} ${fixture.difficulty}에서 ` +
-      `막막함을 느끼고 계실 수 있어요. 입력하신 내용만으로 만든 해석이라 실제와 다를 수 있어요.`,
+      `${situation} ${fixture.difficulty}에서 막막함을 느끼고 계실 수 있어요. ` +
+      `입력하신 내용만으로 정리한 내용이라 실제와 다를 수 있어요.`,
     coreDirection: { ...fixture.core },
     subTopics: topics,
     directionSummary:

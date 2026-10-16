@@ -38,6 +38,14 @@ export function ArrowLeftIcon({ className }: IconProps) {
   );
 }
 
+export function ChevronLeftIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M15 5l-7 7 7 7" />
+    </svg>
+  );
+}
+
 export function HomeIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>
@@ -62,6 +70,14 @@ export function SettingsIcon({ className }: IconProps) {
       <path d="M4 7h10M18 7h2M4 17h2M10 17h10" />
       <circle cx="16" cy="7" r="2" />
       <circle cx="8" cy="17" r="2" />
+    </svg>
+  );
+}
+
+export function PlusIcon({ className }: IconProps) {
+  return (
+    <svg {...base} width={16} height={16} strokeWidth={2.5} className={className}>
+      <path d="M12 5v14M5 12h14" />
     </svg>
   );
 }

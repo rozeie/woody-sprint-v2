@@ -12,7 +12,14 @@ export const ONBOARDING_STEPS = [
   { id: "notice", label: "시작 전 안내" },
 ] as const;
 
+/**
+ * 상단 진행 표시용 전체 단계: 입력 4단계 + 5 학습 방향 확인(결과 확인과 확정). 분석 로딩과 실패는 4에서 5로 넘어가는
+ * 처리 상태라 별도 단계로 세지 않고 4단계로 표시한다. 5단계는 결과 화면에 도착한 것만으로 완료되지 않고 확정해야 끝난다.
+ */
+export const PROGRESS_STEPS = [...ONBOARDING_STEPS, { id: "direction", label: "학습 방향 확인" }] as const;
+
 export const FIRST_STEP = 1;
+/** 입력 화면(/onboarding)에서 오갈 수 있는 마지막 단계. 5단계는 별도 화면(/direction)이다. */
 export const LAST_STEP = ONBOARDING_STEPS.length;
 
 /** 그 단계에서 막히는 오류만 골라낸다. 3단계(추가 설명)와 4단계(안내)는 입력 오류가 없다. */

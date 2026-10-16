@@ -10,6 +10,8 @@ export function TextArea({
   onChange,
   error,
   rows = 4,
+  softBorder = false,
+  hideLabel = false,
 }: {
   id: string;
   label: string;
@@ -19,6 +21,10 @@ export function TextArea({
   onChange: (next: string) => void;
   error?: string;
   rows?: number;
+  /** 기본 테두리를 연하게 한다(키보드 포커스 윤곽선은 그대로). 3단계 추가 설명에서 쓴다. */
+  softBorder?: boolean;
+  /** 라벨을 화면에서만 숨긴다(보조 기술에는 그대로 전달). 헤더나 설명이 이미 같은 내용을 보여 줄 때 쓴다. */
+  hideLabel?: boolean;
 }) {
   const hintId = `${id}-hint`;
   const countId = `${id}-count`;
@@ -29,11 +35,11 @@ export function TextArea({
 
   return (
     <div>
-      <label htmlFor={id} className="block text-label font-semibold">
+      <label htmlFor={id} className={hideLabel ? "sr-only" : "block text-label font-semibold"}>
         {label}
       </label>
       {hint && (
-        <p id={hintId} className="mt-1 text-caption text-fg-secondary">
+        <p id={hintId} className={`${hideLabel ? "" : "mt-1 "}text-caption text-fg-secondary`}>
           {hint}
         </p>
       )}
@@ -46,7 +52,7 @@ export function TextArea({
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
         className={`mt-2 block min-h-13 w-full resize-y rounded-btn border bg-surface px-4 py-3 text-body text-fg ${
-          error ? "border-danger" : "border-line-control"
+          error ? "border-danger" : softBorder ? "border-line" : "border-line-control"
         }`}
       />
       <div className="mt-1 flex items-start justify-between gap-3">

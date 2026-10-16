@@ -1,26 +1,33 @@
 import Link from "next/link";
-import { ArrowLeftIcon } from "./ui/icons";
+import { ChevronLeftIcon } from "./ui/icons";
 
-/** 상단 바 (최소 56px). 하단 탐색이 없는 선형 화면(온보딩 등)에서 쓴다. */
+/**
+ * 온보딩 상단 바(입력 1~5단계, 분석 로딩과 오류, 결과 화면이 함께 쓴다). 서비스명 없이 뒤로가기만 둔다.
+ * 높이 48px, 뒤로가기 터치 영역 48px, 진행 표시까지의 간격은 각 화면이 같은 값(pt-2)으로 맞춘다.
+ * backHref는 링크, onBack은 같은 모양의 버튼(입력 단계 사이 이동)이다.
+ */
 export function TopBar({
   backHref,
+  onBack,
   backLabel = "이전 화면으로",
 }: {
   backHref?: string;
+  onBack?: () => void;
   backLabel?: string;
 }) {
+  const cls =
+    "-ml-3 inline-flex h-12 w-12 items-center justify-center rounded-btn bg-transparent text-fg transition-colors duration-150 hover:bg-transparent hover:text-fg-secondary";
   return (
-    <header className="flex min-h-14 items-center gap-1">
-      {backHref ? (
-        <Link
-          href={backHref}
-          aria-label={backLabel}
-          className="-ml-3 inline-flex h-12 w-12 items-center justify-center rounded-btn text-fg hover:bg-surface-subtle"
-        >
-          <ArrowLeftIcon />
+    <header className="flex h-12 items-center">
+      {onBack ? (
+        <button type="button" aria-label={backLabel} onClick={onBack} className={cls}>
+          <ChevronLeftIcon />
+        </button>
+      ) : backHref ? (
+        <Link href={backHref} aria-label={backLabel} className={cls}>
+          <ChevronLeftIcon />
         </Link>
       ) : null}
-      <span className="text-card-title font-bold">Stack</span>
     </header>
   );
 }
