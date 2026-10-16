@@ -18,9 +18,12 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ko" className="h-full">
-      <body className="flex min-h-dvh flex-col antialiased">
-        <DemoNotice />
-        <div className="flex flex-1 flex-col">{children}</div>
+      <body className="antialiased">
+        {/* 모든 화면의 공통 앱 프레임: 최대 480px, 가운데 정렬(480px 이하에서는 화면 너비를 채운다). 장식 테두리와 그림자는 없다 */}
+        <div data-app-frame className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col bg-background">
+          <DemoNotice />
+          <div className="flex flex-1 flex-col">{children}</div>
+        </div>
       </body>
     </html>
   );

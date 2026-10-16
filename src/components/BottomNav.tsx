@@ -18,7 +18,7 @@ export function BottomNav() {
       aria-label="주요 메뉴"
       className="sticky bottom-0 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)]"
     >
-      <ul className="mx-auto flex max-w-[720px]">
+      <ul className="flex">
         {TABS.map(({ href, label, Icon }) => {
           const active = pathname === href;
           return (

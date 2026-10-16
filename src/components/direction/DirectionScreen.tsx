@@ -296,7 +296,7 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
         <h2 id="sec-input" className="text-card-title font-semibold text-fg">
           나의 커리어 고민
         </h2>
-        <dl className="mt-2 space-y-2 rounded-card border border-line bg-surface px-3 py-2.5 text-caption text-fg">
+        <dl className="mt-2 space-y-2 rounded-card bg-surface px-3 py-2.5 text-caption text-fg">
           {input.situation && (
             <div>
               <dt className="text-caption font-semibold text-fg-muted">현재 포지션</dt>
@@ -340,7 +340,7 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
         <h2 id="sec-interpretation" className="text-section-title font-bold">
           Stack이 정리한 현재 어려움
         </h2>
-        <p className="mt-3 rounded-card border border-line bg-surface p-4 text-body">{analysis.interpretation}</p>
+        <p className="mt-3 rounded-card bg-surface p-4 text-body">{analysis.interpretation}</p>
       </section>
 
       {/* 3. 핵심 학습 방향 (읽기 전용) */}
@@ -348,7 +348,7 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
         <h2 id="sec-core" className="text-section-title font-bold">
           핵심 학습 방향
         </h2>
-        <div className="mt-3 rounded-card border border-line bg-surface p-4">
+        <div className="mt-3 rounded-card bg-surface p-4">
           <div className="flex items-start gap-4">
             <CompassGraphic className="size-12 shrink-0" />
             <div className="min-w-0 flex-1">
@@ -392,7 +392,7 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
               <li
                 key={t.key}
                 data-topic-card={t.key}
-                className="relative flex items-start gap-3 rounded-card border border-line bg-surface p-4 pr-14"
+                className="relative flex items-start gap-3 rounded-card bg-surface p-4 pr-14"
               >
                 <TopicGraphic topicKey={t.key} className="mt-1 h-[3.375rem] w-18 shrink-0 min-[480px]:h-[4.5rem] min-[480px]:w-24" />
                 <div className="min-w-0 flex-1">
@@ -454,7 +454,7 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
       {toast && (
         <div
           role="status"
-          className={`fixed left-1/2 z-30 w-[calc(100%-2rem)] max-w-[680px] -translate-x-1/2 rounded-card bg-chip-selected px-4 py-3 text-caption text-surface shadow-lg ${
+          className={`fixed left-1/2 z-30 w-[calc(100%-2.5rem)] max-w-[440px] -translate-x-1/2 rounded-card bg-chip-selected px-4 py-3 text-caption text-surface shadow-lg ${
             undo ? "bottom-20" : "bottom-4"
           }`}
         >
@@ -465,7 +465,7 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
       {undo && (
         <div
           role="status"
-          className="fixed bottom-4 left-1/2 z-30 flex w-[calc(100%-2rem)] max-w-[680px] -translate-x-1/2 items-center justify-between gap-3 rounded-card bg-chip-selected py-1 pr-1 pl-4 text-caption text-surface shadow-lg"
+          className="fixed bottom-4 left-1/2 z-30 flex w-[calc(100%-2.5rem)] max-w-[440px] -translate-x-1/2 items-center justify-between gap-3 rounded-card bg-chip-selected py-1 pr-1 pl-4 text-caption text-surface shadow-lg"
         >
           <span className="min-w-0">‘{undo.topic.label}’ 주제를 삭제했어요.</span>
           <button

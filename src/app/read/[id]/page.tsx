@@ -17,7 +17,7 @@ async function ReadContent({ params }: { params: PageProps<"/read/[id]">["params
 export default function ReadPage({ params }: PageProps<"/read/[id]">) {
   return (
     <div className="flex flex-1 flex-col bg-surface">
-      <PageContainer reader className="pb-12">
+      <PageContainer className="pb-12">
         <Suspense
           fallback={
             <p role="status" className="py-10 text-body text-fg-secondary">

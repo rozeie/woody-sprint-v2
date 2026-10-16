@@ -22,7 +22,7 @@ export function ContinueReading({ items }: { items: ContinueItem[] }) {
           return (
             <li
               key={user.contentId}
-              className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-card border border-line bg-surface p-4"
+              className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-card bg-surface p-4"
             >
               <div className="min-w-0 flex-1 basis-40">
                 <p className="text-card-title font-semibold">{summary.title}</p>

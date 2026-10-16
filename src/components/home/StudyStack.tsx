@@ -51,7 +51,7 @@ export function StudyStack({ days }: { days: StackDay[] }) {
       <h2 id="stack-title" className="text-section-title font-bold">
         학습 스택
       </h2>
-      <div className="mt-3 rounded-card border border-line bg-surface px-4 py-3">
+      <div className="mt-3 rounded-card bg-surface px-4 py-3">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3">
           <p className="text-caption text-fg-muted">
             {first.label} ~ {last.label}

@@ -156,7 +156,7 @@ export function HomeGate() {
         </div>
 
         {shortage === "zero" ? (
-          <p className="mt-3 rounded-card border border-line bg-surface p-4 text-body text-fg-secondary">
+          <p className="mt-3 rounded-card bg-surface p-4 text-body text-fg-secondary">
             확정한 주제에 맞는 자료를 준비 중이에요. 관련 없는 자료로 채우지 않았어요.
           </p>
         ) : (

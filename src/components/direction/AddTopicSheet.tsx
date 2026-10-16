@@ -90,12 +90,12 @@ export function AddTopicSheet({
         onAnimationEnd={(e) => {
           if (e.target === e.currentTarget && !open) finishClose();
         }}
-        className={`flex max-h-[85dvh] w-full flex-col rounded-t-2xl bg-surface shadow-lg ${
+        className={`mx-auto flex max-h-[85dvh] w-full max-w-[480px] flex-col rounded-t-2xl bg-surface shadow-lg ${
           open ? "stack-sheet-enter" : "stack-sheet-exit"
         }`}
       >
         <div className="border-b border-line">
-          <div className="mx-auto flex w-full max-w-[720px] items-center justify-between gap-3 px-4 py-1">
+          <div className="flex w-full items-center justify-between gap-3 px-4 py-1">
             <h2 id="add-sheet-title" className="text-card-title font-bold">
               학습 주제 추가
             </h2>
@@ -110,7 +110,7 @@ export function AddTopicSheet({
           </div>
         </div>
         <div className="overflow-y-auto overscroll-contain pb-6">
-          <div className="mx-auto w-full max-w-[720px] px-4">
+          <div className="w-full px-4">
             <p className="mt-3 text-caption text-fg-secondary">
               학습 주제는 기존 항목을 포함해 최대 {maxTopics}개까지 선택할 수 있어요.
             </p>

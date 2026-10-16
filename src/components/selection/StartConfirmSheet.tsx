@@ -66,11 +66,11 @@ export function StartConfirmSheet({
         onAnimationEnd={(e) => {
           if (e.target === e.currentTarget && !open) finishClose();
         }}
-        className={`flex max-h-[85dvh] w-full flex-col rounded-t-2xl bg-surface shadow-lg ${
+        className={`mx-auto flex max-h-[85dvh] w-full max-w-[480px] flex-col rounded-t-2xl bg-surface shadow-lg ${
           open ? "stack-sheet-enter" : "stack-sheet-exit"
         }`}
       >
-        <div className="mx-auto min-h-0 w-full max-w-[720px] overflow-y-auto overscroll-contain px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6">
+        <div className="min-h-0 w-full overflow-y-auto overscroll-contain px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6">
           <h2 id="start-sheet-title" className="text-card-title font-bold">
             이 자료로 학습을 시작할까요?
           </h2>

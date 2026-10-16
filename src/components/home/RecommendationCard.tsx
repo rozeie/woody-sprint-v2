@@ -46,15 +46,16 @@ export function RecommendationCard({
         href={previewHref}
         aria-labelledby={titleId}
         aria-describedby={`rec-kind-${index} rec-summary-${index} rec-meta-${index}`}
-        className="block rounded-card border border-line/70 bg-surface transition-colors duration-150 hover:border-fg-muted"
+        className="block rounded-card bg-surface transition-colors duration-150 hover:bg-surface-subtle"
       >
-        <span className="flex items-start gap-3 p-4">
+        {/* 아이콘 열과 텍스트 열을 하나의 그리드로 두고, 하단 정보도 같은 텍스트 열에 놓는다. 폭이 바뀌어도 시작점이 같다 */}
+        <span className="grid grid-cols-[3rem_minmax(0,1fr)] gap-x-3 px-4 pt-4">
           {/* 투명도는 배경 요소에만 적용하고 아이콘은 그대로 선명하게 둔다 */}
-          <span aria-hidden="true" className="relative inline-flex size-12 shrink-0 items-center justify-center rounded-full">
+          <span aria-hidden="true" className="relative inline-flex size-12 items-center justify-center self-start rounded-full">
             <span className="absolute inset-0 rounded-full bg-primary/10" />
             <Icon className="relative size-7 text-primary" />
           </span>
-          <span className="min-w-0 flex-1">
+          <span className="min-w-0">
             <span id={`rec-kind-${index}`} className="block text-caption font-semibold text-primary">
               <span className="sr-only">학습 방식 </span>
               {TYPE_PHRASE[card.type]}
@@ -66,26 +67,27 @@ export function RecommendationCard({
               {card.shortSummary}
             </span>
           </span>
-        </span>
-        {/* 시작점은 아이콘(16px 패딩 + 48px + 12px 간격)이 아니라 제목과 설명의 왼쪽(76px)에 맞춘다 */}
-        <span id={`rec-meta-${index}`} className="block border-t border-line/70 py-2.5 pl-[76px] pr-4 text-caption text-fg-secondary">
-          <span className="flex items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-1.5">
-              <ClockIcon className="size-4 shrink-0" />
-              <span>예상 소요 시간 약 {card.estMinutes}분</span>
+          {/* 구분선은 카드 전체 폭 */}
+          <span aria-hidden="true" className="col-span-2 -mx-4 mt-4 block border-t border-line/70" />
+          <span id={`rec-meta-${index}`} className="col-start-2 block min-w-0 py-2.5 text-caption text-fg-secondary">
+            <span className="flex items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-1.5">
+                <ClockIcon className="size-4 shrink-0" />
+                <span>예상 소요 시간 약 {card.estMinutes}분</span>
+              </span>
+              {selected && <span className="shrink-0 font-semibold text-fg">선택됨</span>}
             </span>
-            {selected && <span className="shrink-0 font-semibold text-fg">선택됨</span>}
+            {card.linkedTopicLabels.length > 0 && (
+              <span className="mt-1.5 flex flex-wrap gap-1.5">
+                <span className="sr-only">연결되는 주제 </span>
+                {card.linkedTopicLabels.map((t) => (
+                  <span key={t} className="rounded-chip bg-primary/10 px-2.5 py-0.5 font-semibold text-primary">
+                    {t}
+                  </span>
+                ))}
+              </span>
+            )}
           </span>
-          {card.linkedTopicLabels.length > 0 && (
-            <span className="mt-1.5 flex flex-wrap gap-1.5">
-              <span className="sr-only">연결되는 주제 </span>
-              {card.linkedTopicLabels.map((t) => (
-                <span key={t} className="rounded-chip bg-primary/10 px-2.5 py-0.5 font-semibold text-primary">
-                  {t}
-                </span>
-              ))}
-            </span>
-          )}
         </span>
       </Link>
     </article>

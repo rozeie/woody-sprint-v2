@@ -53,7 +53,7 @@ export function LibraryScreen() {
           서재를 불러오는 중이에요…
         </p>
       ) : rows.length === 0 ? (
-        <div className="mt-6 rounded-card border border-line bg-surface p-4">
+        <div className="mt-6 rounded-card bg-surface p-4">
           <p className="text-card-title font-semibold">아직 선택한 자료가 없어요</p>
           <p className="mt-1 text-body text-fg-secondary">홈의 오늘의 추천에서 자료를 골라 보세요.</p>
           <div className="mt-4">
@@ -69,7 +69,7 @@ export function LibraryScreen() {
             return (
               <li
                 key={user.contentId}
-                className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-card border border-line bg-surface p-4"
+                className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-card bg-surface p-4"
               >
                 <div className="min-w-0 flex-1 basis-40">
                   <p className="text-card-title font-semibold">{summary.title}</p>

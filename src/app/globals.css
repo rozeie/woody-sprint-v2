@@ -33,6 +33,7 @@
   --color-danger-bg: #fef3f2;
   --color-disabled-bg: #eaecf0;
   --color-disabled-fg: #667085;
+  --color-frame-outside: #e4e7ec; /* 앱 프레임(최대 480px) 바깥 여백의 중립 배경 */
   --color-chip-selected: #333d4b; /* 선택된 고민 칩 배경. 사용자 지시. 공통 회색 토큰과 별개 */
 
   /* 한글 폰트: Pretendard → Noto Sans KR → Apple SD Gothic Neo → Malgun Gothic.
@@ -70,12 +71,15 @@
 }
 
 html {
+  /* 스크롤바 자리를 항상 확보해, 시트가 열려 스크롤을 잠가도 앱 프레임이 좌우로 움직이지 않게 한다 */
+  scrollbar-gutter: stable;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
 
 body {
-  background: var(--color-background);
+  /* 프레임 바깥은 중립 배경, 프레임 안의 #F9FAFB 배경은 layout의 앱 프레임이 가진다 */
+  background: var(--color-frame-outside);
   color: var(--color-fg);
   font-family: var(--font-sans);
   font-size: var(--text-body);
