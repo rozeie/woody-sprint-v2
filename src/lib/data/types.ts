@@ -12,6 +12,9 @@ import type { ReadingDay } from "@/lib/stack-rules";
 export interface StackRepository {
   getOnboardingDraft(): Promise<OnboardingDraft | null>;
   saveOnboardingDraft(draft: OnboardingDraft): Promise<void>;
+  /** 온보딩 현재 단계(1부터 4). 새로고침 때 복원한다. 저장된 값이 없거나 올바르지 않으면 null. */
+  getOnboardingStep(): Promise<number | null>;
+  saveOnboardingStep(step: number): Promise<void>;
 
   /** 분석 결과 + 세부 주제 편집 상태(확정 전 초안) */
   getDirectionDraft(): Promise<DirectionDraft | null>;

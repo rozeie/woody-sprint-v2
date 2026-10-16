@@ -52,11 +52,21 @@ export function toggleConcern(
   return { selected: [...selected, key], blocked: false };
 }
 
+/**
+ * 선택하지 않은 칩을 비활성화해야 하는지. 이미 max개를 골랐다면 고르지 않은 칩은 비활성이고,
+ * 선택된 칩은 해제할 수 있다. 하나를 해제하면 나머지는 다시 활성화된다. '기타'는 이 제한의 영향을 받지 않는다(호출하지 않는다).
+ */
+export function isChipDisabled(
+  selected: readonly string[],
+  key: string,
+  max: number = MAX_CONCERN_CHIPS,
+): boolean {
+  return !selected.includes(key) && selected.length >= max;
+}
+
 export type DraftErrors = {
-  /** 일반 칩 0개이고 '기타'도 선택하지 않음 */
+  /** 일반 칩 0개이고 '기타' 내용도 비어 있음 */
   concern?: "none" | "too-many";
-  /** '기타'를 선택했지만 내용이 비어 있음 */
-  other?: "empty";
   situation?: "missing";
 };
 
@@ -67,11 +77,8 @@ export function validateDraft(draft: OnboardingDraft): {
   const errors: DraftErrors = {};
   if (draft.concernKeys.length > MAX_CONCERN_CHIPS) {
     errors.concern = "too-many";
-  } else if (draft.concernKeys.length === 0 && !draft.otherSelected) {
+  } else if (draft.concernKeys.length === 0 && draft.otherText.trim().length === 0) {
     errors.concern = "none";
-  }
-  if (draft.otherSelected && draft.otherText.trim().length === 0) {
-    errors.other = "empty";
   }
   if (draft.situation === null) {
     errors.situation = "missing";
@@ -105,11 +112,14 @@ export function sanitizeDraft(
     }
   }
 
+  const otherText =
+    typeof r.otherText === "string" ? clampText(r.otherText, OTHER_TEXT_MAX) : "";
+
   return {
     concernKeys: keys,
-    otherSelected: r.otherSelected === true,
-    otherText:
-      typeof r.otherText === "string" ? clampText(r.otherText, OTHER_TEXT_MAX) : "",
+    // 기타는 토글 없이 입력창만 있다. 내용이 있으면 선택, 비어 있으면 미선택으로 본다(예전 저장값의 선택 표시는 무시).
+    otherSelected: otherText.trim().length > 0,
+    otherText,
     detailText:
       typeof r.detailText === "string" ? clampText(r.detailText, detailMax) : "",
     situation:

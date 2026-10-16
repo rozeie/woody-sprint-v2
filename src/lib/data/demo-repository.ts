@@ -9,6 +9,7 @@ import {
   type DirectionDraft,
 } from "@/lib/direction-rules";
 import { sanitizeDraft, type OnboardingDraft } from "@/lib/onboarding-rules";
+import { sanitizeStep } from "@/lib/onboarding-steps";
 import {
   completeReading,
   sanitizeUserContents,
@@ -28,6 +29,7 @@ import type { StackRepository } from "./types";
  */
 const NS = "stack-demo:v1";
 const DRAFT_KEY = `${NS}:onboarding-draft`;
+const STEP_KEY = `${NS}:onboarding-step`;
 const DIRECTION_DRAFT_KEY = `${NS}:direction-draft`;
 const CONFIRMED_KEY = `${NS}:confirmed-direction`;
 const RECOMMENDATION_KEY = `${NS}:recommendation-set`;
@@ -70,6 +72,14 @@ export const demoRepository: StackRepository = {
 
   async saveOnboardingDraft(draft: OnboardingDraft) {
     write(DRAFT_KEY, draft);
+  },
+
+  async getOnboardingStep() {
+    return sanitizeStep(read(STEP_KEY));
+  },
+
+  async saveOnboardingStep(step: number) {
+    write(STEP_KEY, step);
   },
 
   async getDirectionDraft() {

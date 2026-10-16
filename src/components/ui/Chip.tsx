@@ -1,9 +1,7 @@
-import { CheckIcon } from "./icons";
-
 /**
- * 토글 칩 (DESIGN §7): 시각 높이 36px, 터치 영역 48px, 선택 시 체크 + 진한 경계.
- * `blocked`는 선택 개수 제한으로 새 선택이 불가한 상태. 포커스는 유지하고(aria-disabled)
- * 눌렀을 때 이유를 안내할 수 있게 한다.
+ * 토글 칩 (DESIGN §7): 시각 높이 36px, 터치 영역 48px, 선택 시 #333D4B 배경과 흰 글자(체크 아이콘 없음, 선택 전후 크기 불변).
+ * `blocked`는 선택 개수 제한으로 새 선택이 불가한 상태이고, 이때 고르지 않은 칩은 실제 비활성(disabled)이다.
+ * 이미 선택한 칩은 비활성이 아니라 해제할 수 있다. 이유 안내는 칩 묶음 아래의 상시 문구가 맡는다.
  */
 export function Chip({
   label,
@@ -19,16 +17,16 @@ export function Chip({
   describedBy?: string;
 }) {
   const look = selected
-    ? "border-primary-ink bg-primary-tint text-primary-ink"
+    ? "border-transparent bg-chip-selected text-surface"
     : blocked
-      ? "border-transparent bg-disabled-bg text-disabled-fg"
+      ? "border-transparent bg-disabled-bg text-disabled-fg opacity-60"
       : "border-transparent bg-surface-subtle text-fg-secondary group-hover:bg-line";
 
   return (
     <button
       type="button"
       aria-pressed={selected}
-      aria-disabled={blocked && !selected ? true : undefined}
+      disabled={blocked && !selected}
       aria-describedby={describedBy}
       onClick={onClick}
       className={`group inline-flex min-h-12 items-center ${
@@ -38,7 +36,6 @@ export function Chip({
       <span
         className={`inline-flex h-9 items-center gap-1 rounded-chip border px-3 text-label font-semibold transition-colors duration-150 ${look}`}
       >
-        {selected && <CheckIcon />}
         {label}
       </span>
     </button>

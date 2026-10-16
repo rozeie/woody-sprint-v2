@@ -63,14 +63,24 @@ describe("'기타'는 개수 제한 밖이다", () => {
     assert.equal(validateDraft(d).ok, true);
   });
 
-  it("기타를 선택했지만 내용이 비어 있거나 공백뿐이면 입력을 요구한다", () => {
-    for (const text of ["", "   \n "]) {
-      const r = validateDraft(
-        draft({ concernKeys: [keys[0]], otherSelected: true, otherText: text, situation: "junior" }),
+  it("기타가 비어 있거나 공백뿐이면 미선택으로 본다(칩이 있으면 유효, 칩도 없으면 고민 영역을 요구)", () => {
+    for (const text of ["", "   "]) {
+      assert.equal(
+        validateDraft(draft({ concernKeys: [keys[0]], otherText: text, situation: "junior" })).ok,
+        true,
       );
+      const r = validateDraft(draft({ otherText: text, situation: "junior" }));
       assert.equal(r.ok, false);
-      assert.equal(r.errors.other, "empty");
+      assert.equal(r.errors.concern, "none");
     }
+  });
+
+  it("복원 시 기타 내용이 있으면 선택, 비어 있으면 예전 선택 표시가 있어도 미선택이다", () => {
+    const a = sanitizeDraft({ otherSelected: false, otherText: "남은 입력" }, keys, PROVISIONAL.detailTextMax);
+    assert.equal(a.otherText, "남은 입력");
+    assert.equal(a.otherSelected, true);
+    const b = sanitizeDraft({ otherSelected: true, otherText: "  " }, keys, PROVISIONAL.detailTextMax);
+    assert.equal(b.otherSelected, false);
   });
 
   it("기타 입력은 300자로 제한된다", () => {
@@ -146,5 +156,25 @@ describe("칩 목록 데이터", () => {
   it("key가 중복되지 않고 '기타'는 일반 칩 목록에 없다", () => {
     assert.equal(new Set(keys).size, keys.length);
     assert.equal(CONCERN_CHIPS.some((c) => c.label === "기타"), false);
+  });
+});
+
+describe("고민 칩 선택지 보강(카테고리별 5~8개)", () => {
+  it("카테고리마다 5~8개이고 key와 라벨이 겹치지 않는다", async () => {
+    const { CONCERN_GROUPS } = await import("../src/config/ui-provisional.ts");
+    assert.equal(CONCERN_GROUPS.length, 4);
+    for (const g of CONCERN_GROUPS) {
+      assert.ok(g.chips.length >= 5 && g.chips.length <= 8, `${g.name}: ${g.chips.length}`);
+    }
+    assert.equal(new Set(keys).size, keys.length);
+    assert.equal(new Set(CONCERN_CHIPS.map((c) => c.label)).size, keys.length);
+  });
+
+  it("기존 15개 key는 그대로 남고, 모든 칩에 모의 분석 설명이 있다", async () => {
+    const { TOPIC_WHY } = await import("../src/config/mock-analysis-fixtures.ts");
+    for (const k of ["user-research", "ia-flow", "design-feedback", "role-direction", "ux-writing"]) {
+      assert.ok(keys.includes(k), k);
+    }
+    for (const k of keys) assert.ok(TOPIC_WHY[k], k);
   });
 });

@@ -10,7 +10,7 @@
      background→background · surface→surface · surface-subtle→surface-subtle
      text-primary→fg · text-secondary→fg-secondary · text-muted→fg-muted
      border-subtle→line · border-control→line-control · primary-text→primary-ink */
-  --color-background: #f7f8fa;
+  --color-background: #f9fafb; /* 사용자 지시로 DESIGN 제안값 #F7F8FA에서 변경 */
   --color-surface: #ffffff;
   --color-surface-subtle: #f0f2f5;
   --color-fg: #1d2939;
@@ -18,7 +18,8 @@
   --color-fg-muted: #667085;
   --color-line: #d0d5dd;
   --color-line-control: #667085;
-  --color-primary: #18c37e;
+  --color-primary: #15b574; /* 사용자 지시(DESIGN 제안값 #18C37E에서 변경) */
+  --color-on-primary: #ffffff; /* 그린 CTA 글자. 사용자 지시. 대비는 docs/ui-demo-decisions.md 참조 */
   --color-primary-hover: #15b876;
   --color-primary-pressed: #10a66b;
   --color-primary-tint: #e8faf1;
@@ -32,6 +33,7 @@
   --color-danger-bg: #fef3f2;
   --color-disabled-bg: #eaecf0;
   --color-disabled-fg: #667085;
+  --color-chip-selected: #333d4b; /* 선택된 고민 칩 배경. 사용자 지시. 공통 회색 토큰과 별개 */
 
   /* 한글 폰트: Pretendard → Noto Sans KR → Apple SD Gothic Neo → Malgun Gothic.
      폰트 파일은 번들하지 않는다(실제 배포 여부는 DESIGN §4상 구현 시 확인 사항). 설치된 폰트만 사용. */
@@ -97,6 +99,18 @@ body {
 :focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
+}
+
+/* 하단에 고정한 CTA 바가 있는 화면: 입력에 포커스가 가면 바 높이만큼 위에 보이도록 스크롤 여백을 둔다 */
+html:has([data-sticky-bar]) {
+  scroll-padding-bottom: 9rem;
+}
+
+/* 화면 높이가 매우 낮으면(가로 모드, 작은 창 등) 고정 바가 화면 대부분을 차지하므로 문서 흐름 안에 둔다 */
+@media (max-height: 520px) {
+  [data-sticky-bar] {
+    position: relative; /* 문서 흐름 안에 두되 바 위의 토스트가 바를 기준으로 놓이게 한다 */
+  }
 }
 
 /* 비필수 움직임 제거 (DESIGN §10) */

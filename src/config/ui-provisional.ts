@@ -13,8 +13,6 @@ export type ConcernChip = {
 export const PROVISIONAL = {
   /** PRD F1-01 / D-11 미확정. 값은 v0.1 제안(500자). */
   detailTextMax: 500,
-  /** PRD F1-01 / D-11 미확정: '기타' 선택 시에도 추가 설명을 함께 노출할지. 데모는 항상 노출. */
-  showDetailWithOther: true,
   /** PRD F1-05 / D-10 미확정: 세부 주제 최대 개수(v0.1 제안 5). 추가 방식은 "보유 토픽 목록에서 선택"으로 임시 구현. */
   maxSubTopics: 5,
   /**
@@ -47,12 +45,26 @@ export const CONCERN_CHIPS: readonly ConcernChip[] = [
   { key: "portfolio", label: "포트폴리오 구성", group: "커리어" },
   { key: "interview", label: "면접 준비", group: "커리어" },
   { key: "role-direction", label: "직무 이해와 방향 설정", group: "커리어" },
+  // 카테고리별 5~8개로 보강한 항목. 기존 15개의 key와 순서는 그대로 두고 뒤에 붙인다(저장 데이터 호환).
+  // 그룹 안 표시 순서는 기존 항목 다음에 아래 순서다. 목록 근거: docs/ui-demo-decisions.md
+  { key: "persona-journey", label: "페르소나와 사용자 여정", group: "문제 정의와 리서치" },
+  { key: "competitor-analysis", label: "경쟁 서비스 분석", group: "문제 정의와 리서치" },
+  { key: "hypothesis-test", label: "가설 세우고 검증하기", group: "문제 정의와 리서치" },
+  { key: "usability-test", label: "사용성 테스트", group: "문제 정의와 리서치" },
+  { key: "accessibility", label: "접근성 고려", group: "설계" },
+  { key: "edge-states", label: "예외 상황 설계", group: "설계" },
+  { key: "design-review", label: "디자인 리뷰 진행", group: "협업과 소통" },
+  { key: "handoff-docs", label: "개발 전달 문서", group: "협업과 소통" },
+  { key: "resume", label: "이력서와 자기소개서", group: "커리어" },
+  { key: "design-task", label: "디자인 과제 전형", group: "커리어" },
+  { key: "work-adapt", label: "실무 적응", group: "커리어" },
+  { key: "growth-plan", label: "성장 계획 세우기", group: "커리어" },
 ];
 
-/** 칩 목록을 그룹(표시 순서 유지)별로 묶은 것. 온보딩과 세부 주제 추가 목록이 함께 쓴다. */
+/** 칩 목록을 그룹(처음 나온 순서 유지, 같은 그룹은 목록 순서)별로 묶은 것. 온보딩과 세부 주제 추가 목록이 함께 쓴다. */
 export const CONCERN_GROUPS: { name: string; chips: ConcernChip[] }[] = [];
 for (const chip of CONCERN_CHIPS) {
-  const last = CONCERN_GROUPS[CONCERN_GROUPS.length - 1];
-  if (last && last.name === chip.group) last.chips.push(chip);
+  const found = CONCERN_GROUPS.find((g) => g.name === chip.group);
+  if (found) found.chips.push(chip);
   else CONCERN_GROUPS.push({ name: chip.group, chips: [chip] });
 }
