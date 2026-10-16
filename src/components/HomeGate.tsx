@@ -7,11 +7,13 @@ import type { RecommendationCard as Card } from "@/lib/content/types";
 import { getRepository } from "@/lib/data";
 import type { ConfirmedDirection } from "@/lib/direction-rules";
 import { continueReadingOrder, type UserContent } from "@/lib/selection-rules";
-import { cycleEndMs, cycleKeyOf, cycleKeyOfIso, formatRemaining, remainingMs } from "@/lib/recommendation-cycle";
+import { cycleEndMs, cycleKeyOf, cycleKeyOfIso } from "@/lib/recommendation-cycle";
+import { ReplaceCountdown } from "./home/ReplaceCountdown";
 import { buildStackDays, type StackDay } from "@/lib/stack-rules";
 import { ContinueReading, type ContinueItem } from "./home/ContinueReading";
 import { RecommendationCard } from "./home/RecommendationCard";
 import { HomeHero } from "./home/HomeHero";
+import { MyDirection } from "./home/MyDirection";
 import { StudyStack } from "./home/StudyStack";
 import { TabScreen } from "./TabScreen";
 
@@ -39,14 +41,14 @@ async function loadContinueItems(userContents: UserContent[]): Promise<ContinueI
 
 /**
  * 홈. 방향 확정 전에는 온보딩으로 보낸다(PRD F4-01).
- * 확정 후: 상단 대표 섹션 → 학습 스택 → 이어서 읽기(선택한 미완료 자료가 있을 때만) → 오늘의 추천 2개.
+ * 확정 후: 상단 대표 섹션 → 학습 스택 → 나의 학습 방향 → 이어서 읽기(선택한 미완료 자료가 있을 때만) → 오늘의 추천 2개.
  * 추천 묶음은 확정 직후 만들어 저장하고, 없으면 이 화면에서 한 번 만든다. 이후에는 같은 묶음을 그대로 보여 준다.
  * 선택이 연결된 묶음·확정한 방향은 덮어쓰지 않는다.
  */
 export function HomeGate() {
   const router = useRouter();
   const [data, setData] = useState<HomeData | null>(null);
-  // 남은 시간과 추천 회차를 판단하는 현재 시각. 주기적으로, 탭에 돌아왔을 때, 교체 시각에 맞춰 갱신한다(브라우저 시계 기준 데모)
+  // 추천 회차를 판단하는 현재 시각. 주기적으로, 탭에 돌아왔을 때, 교체 시각에 맞춰 갱신한다(브라우저 시계 기준 데모). 매초 남은 시간은 ReplaceCountdown이 따로 그린다
   // (Cache Components는 렌더 중 현재 시각을 읽지 못하므로 효과 안에서 처음 채운다)
   const [nowMs, setNowMs] = useState<number | null>(null);
   const cycleKey = nowMs === null ? null : cycleKeyOf(nowMs);
@@ -140,19 +142,18 @@ export function HomeGate() {
         <StudyStack days={stackDays} />
       </div>
 
+      <MyDirection direction={direction} />
+
       {/* 선택했지만 완료하지 않은 자료가 있을 때만 그려지며, 있으면 오늘의 추천보다 위에 둔다 */}
       <ContinueReading items={continueItems} />
 
       <section aria-labelledby="rec-title" className="mt-6">
-        <div className="flex items-baseline justify-between gap-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <h2 id="rec-title" className="text-section-title font-bold">
             오늘의 추천
           </h2>
-          <p data-replace-countdown className="shrink-0 text-caption font-semibold text-fg-secondary">
-            {nowMs !== null && formatRemaining(remainingMs(nowMs))}
-          </p>
+          <ReplaceCountdown />
         </div>
-        <p className="mt-1 text-caption text-fg-muted">‘{direction.coreDirection.label}’ 방향 기준</p>
 
         {shortage === "zero" ? (
           <p className="mt-3 rounded-card border border-line bg-surface p-4 text-body text-fg-secondary">

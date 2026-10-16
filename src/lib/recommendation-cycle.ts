@@ -38,6 +38,13 @@ export function remainingMs(nowMs: number): number {
   return cycleEndMs(nowMs) - nowMs;
 }
 
+/** 남은 시간을 "HH:MM:SS"로. 초는 올림이라 교체 직전까지 00:00:01로 보이고 음수는 나오지 않는다. 회차 시작 직후는 24:00:00이다. */
+export function formatCountdown(ms: number): string {
+  const total = Math.min(24 * 3600, Math.max(0, Math.ceil(ms / 1000)));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(Math.floor(total / 3600))}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`;
+}
+
 /** "교체까지 N시간 N분", 1시간 미만이면 "교체까지 N분". 분은 올림이라 교체 직전에도 0분으로 보이지 않는다. */
 export function formatRemaining(ms: number): string {
   const total = Math.max(1, Math.ceil(ms / 60_000));

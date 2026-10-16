@@ -5,6 +5,7 @@ import {
   cycleKeyOf,
   cycleKeyOfIso,
   cycleStartMs,
+  formatCountdown,
   formatRemaining,
   remainingMs,
 } from "../src/lib/recommendation-cycle.ts";
@@ -54,5 +55,15 @@ describe("추천 회차 (KST 오후 6시 교체)", () => {
     assert.equal(cycleKeyOfIso(new Date(kst(2026, 10, 16, 18, 0, 0)).toISOString()), "2026-10-16");
     assert.equal(cycleKeyOfIso("not-a-date"), "");
     assert.ok(cycleKeyOfIso("not-a-date") < cycleKeyOf(Date.now()));
+  });
+
+  it("HH:MM:SS 남은 시간: 현재 시각과 다음 오후 6시의 차이로 계산하고 음수가 나오지 않는다", () => {
+    assert.equal(formatCountdown(remainingMs(kst(2026, 10, 16, 3, 3, 28))), "14:56:32");
+    assert.equal(formatCountdown(remainingMs(kst(2026, 10, 16, 17, 59, 59))), "00:00:01");
+    assert.equal(formatCountdown(remainingMs(kst(2026, 10, 16, 18, 0, 0))), "24:00:00");
+    assert.equal(formatCountdown(remainingMs(kst(2026, 10, 16, 18, 0, 1))), "23:59:59");
+    assert.equal(formatCountdown(0), "00:00:00");
+    assert.equal(formatCountdown(-5000), "00:00:00");
+    assert.equal(formatCountdown(remainingMs(kst(2026, 10, 16, 17, 59, 59) + 400)), "00:00:01");
   });
 });

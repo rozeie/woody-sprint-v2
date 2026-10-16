@@ -13,6 +13,15 @@ const base = {
   focusable: false,
 };
 
+export function ClockIcon({ className }: IconProps) {
+  return (
+    <svg {...base} width={16} height={16} className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  );
+}
+
 export function CheckIcon({ className }: IconProps) {
   return (
     <svg {...base} width={16} height={16} className={className}>

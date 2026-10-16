@@ -64,15 +64,24 @@ describe("예시 자료 데이터", () => {
     }
   });
 
-  it("홈 카드용 짧은 소개는 약 30자 안팎의 완결된 한 문장이며 제목을 반복하거나 소개를 잘라 만든 것이 아니다", () => {
+  it("홈 카드용 소개는 구체적인 1~2문장이며 제목 반복, 잘린 문장, 효과 보장 표현이 없고 자료마다 다르다", () => {
+    const seen = new Set<string>();
     for (const c of DEMO_CONTENTS) {
       const t = c.shortSummary;
-      assert.ok([...t].length >= 24 && [...t].length <= 38, c.id + " " + t);
+      const sentences = t.split(/(?<=요)\.\s*/).filter(Boolean);
+      assert.ok(sentences.length >= 1 && sentences.length <= 2, c.id + " " + t);
+      assert.ok([...t].length >= 30 && [...t].length <= 130, c.id + " " + t);
       assert.equal(t.includes(c.title), false, c.id);
       assert.ok(/[.요다]$/.test(t), c.id);
       assert.equal(t.includes("…") || t.includes("..."), false, c.id);
-      assert.equal(c.summary.startsWith(t.replace(/[.]+$/, "")), false, c.id); // 소개의 앞부분을 그대로 자른 문장이 아니다
+      assert.equal(/보장|반드시|부족|효과|향상|완벽/.test(t), false, c.id);
+      assert.equal(seen.has(t), false, c.id);
+      seen.add(t);
+      assert.equal(sentences.at(-1) === sentences[0] && sentences.length === 2, false, c.id);
     }
+    // 두 번째 문장을 모든 자료에 같은 일반 문구로 붙이지 않는다
+    const tails = DEMO_CONTENTS.map((c) => c.shortSummary.split(/(?<=요)\.\s*/).filter(Boolean).at(-1));
+    assert.ok(new Set(tails).size === tails.length);
   });
 
   it("카드와 미리보기 응답에 짧은 소개, 소개, 핵심 학습 내용이 담긴다", async () => {
