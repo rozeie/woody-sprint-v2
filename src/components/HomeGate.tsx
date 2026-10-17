@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { CATALOG } from "@/config/catalog";
 import { getContentService } from "@/lib/content";
+import { explainZero } from "@/lib/content/recommend";
 import type { RecommendationCard as Card } from "@/lib/content/types";
-import { getRepository } from "@/lib/data";
 import type { ConfirmedDirection } from "@/lib/direction-rules";
 import { continueReadingOrder, type UserContent } from "@/lib/selection-rules";
 import { cycleEndMs, cycleKeyOf, cycleKeyOfIso } from "@/lib/recommendation-cycle";
+import { useReaderEnv } from "./reader/reader-env";
 import { ReplaceCountdown } from "./home/ReplaceCountdown";
 import { buildStackDays, type StackDay } from "@/lib/stack-rules";
 import { ContinueReading, type ContinueItem } from "./home/ContinueReading";
@@ -26,6 +28,15 @@ type HomeData = {
   userContents: UserContent[];
   continueItems: ContinueItem[];
 };
+
+/** 추천이 0개일 때의 안내. 관련 없는 자료로 채우지 않는 것은 모두 같다. */
+const ZERO_MESSAGE = {
+  "no-content": "확정한 주제에 맞는 자료를 준비 중이에요. 관련 없는 자료로 채우지 않았어요.",
+  "all-selected":
+    "확정한 주제에 맞는 자료를 이미 모두 선택했어요. 선택한 자료는 서재에서 볼 수 있고, 새 자료를 준비 중이에요. 관련 없는 자료로 채우지 않았어요.",
+  "excluded-previous":
+    "확정한 주제에 맞는 자료 중 남은 것은 직전에 추천해 드린 자료예요. 같은 자료를 바로 다시 추천하지 않고, 새 자료를 준비 중이에요. 관련 없는 자료로 채우지 않았어요.",
+} as const;
 
 const sameKeys = (a: readonly string[], b: readonly string[]) =>
   [...a].sort().join("|") === [...b].sort().join("|");
@@ -47,6 +58,7 @@ async function loadContinueItems(userContents: UserContent[]): Promise<ContinueI
  */
 export function HomeGate() {
   const router = useRouter();
+  const { repo: getRepo, paths } = useReaderEnv();
   const [data, setData] = useState<HomeData | null>(null);
   // 추천 회차를 판단하는 현재 시각. 주기적으로, 탭에 돌아왔을 때, 교체 시각에 맞춰 갱신한다(브라우저 시계 기준 데모). 매초 남은 시간은 ReplaceCountdown이 따로 그린다
   // (Cache Components는 렌더 중 현재 시각을 읽지 못하므로 효과 안에서 처음 채운다)
@@ -76,12 +88,12 @@ export function HomeGate() {
     if (cycleKey === null) return; // 현재 시각을 아직 읽지 않았다
     let alive = true;
     (async () => {
-      const repo = getRepository();
+      const repo = getRepo();
       const direction = await repo.getConfirmedDirection();
       if (!alive) return;
       if (!direction) {
         setData(null);
-        router.replace("/onboarding");
+        router.replace(paths.onboarding);
         return;
       }
 
@@ -96,11 +108,15 @@ export function HomeGate() {
       if (!set || stale || (!sameKeys(set.directionTopicKeys, topicKeys) && !hasSelection)) {
         const draft = await repo.getDirectionDraft();
         const input = draft?.input ?? (await repo.getOnboardingDraft());
-        // 새 회차에서는 직전 추천과 이미 선택한 자료를 빼고 같은 기준으로 고른다. 남는 자료가 모자라면 부족 상태가 된다(관련 없는 자료로 채우지 않는다)
-        const excludeContentIds = stale
-          ? [...set!.items.map((i) => i.contentId), ...existingContents.map((u) => u.contentId)]
-          : [];
-        const created = await service.createRecommendation({ direction, input, excludeContentIds });
+        // 새 회차: 이미 선택한 자료는 계속 빼고, 직전 추천에 없던 자료를 먼저 쓴다. 모자라면 직전 추천 중 선택하지 않은 자료로 부족한 수만 채운다(관련 없는 자료로 채우지 않는다)
+        const selectedIds = existingContents.map((u) => u.contentId);
+        const previousIds = stale ? set!.items.map((i) => i.contentId) : [];
+        const created = await service.createRecommendation({
+          direction,
+          input,
+          excludeContentIds: selectedIds,
+          deprioritizeContentIds: previousIds,
+        });
         set = (await repo.saveRecommendationSet(created)) ? created : ((await repo.getRecommendationSet()) ?? created);
       }
       const cards = await service.getCards(set);
@@ -113,7 +129,7 @@ export function HomeGate() {
         setId: set.id,
         cards,
         shortage: set.shortage,
-        stackDays: buildStackDays(new Date(), readingDays),
+        stackDays: buildStackDays(Date.now(), readingDays),
         userContents,
         continueItems,
       });
@@ -121,7 +137,7 @@ export function HomeGate() {
     return () => {
       alive = false;
     };
-  }, [router, cycleKey]);
+  }, [router, cycleKey, getRepo, paths]);
 
   if (!data) {
     return (
@@ -157,7 +173,13 @@ export function HomeGate() {
 
         {shortage === "zero" ? (
           <p className="mt-3 rounded-card bg-surface p-4 text-body text-fg-secondary">
-            확정한 주제에 맞는 자료를 준비 중이에요. 관련 없는 자료로 채우지 않았어요.
+            {ZERO_MESSAGE[
+              explainZero(
+                CATALOG,
+                direction.topics.map((t) => t.key),
+                userContents.map((u) => u.contentId),
+              )
+            ]}
           </p>
         ) : (
           <div className="mt-3 space-y-3">
@@ -166,7 +188,7 @@ export function HomeGate() {
                 key={card.contentId}
                 card={card}
                 index={i}
-                previewHref={`/content/${card.contentId}/preview`}
+                previewHref={paths.preview(card.contentId)}
                 selected={selectedInSet?.contentId === card.contentId}
               />
             ))}

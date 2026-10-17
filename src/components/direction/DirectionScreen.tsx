@@ -76,7 +76,8 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
   const [addOpen, setAddOpen] = useState(false);
   const [reanalyzing, setReanalyzing] = useState(false);
   const [reanalyzeFailed, setReanalyzeFailed] = useState(false);
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState(""); // 본문에 남는 안내(복원 불가, 재분석 결과)
+  const [srNotice, setSrNotice] = useState(""); // 삭제와 복원 결과: 화면에는 보이지 않고 화면 읽기 도구에만 전달
   const [menuKey, setMenuKey] = useState<string | null>(null); // 더보기 메뉴가 열린 주제
   const [undo, setUndo] = useState<UndoState | null>(null); // 방금 삭제한 주제(5초간 되돌릴 수 있음)
   const [toast, setToast] = useState<string | null>(null); // 짧은 토스트(주제 추가, 확정 불가 안내)
@@ -163,7 +164,8 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
     const removed = topics[index];
     commit({ ...draft, topics: removeTopic(topics, key) });
     setMenuKey(null);
-    setNotice(`‘${label}’ 주제를 삭제했어요.`);
+    setNotice("");
+    setSrNotice(`‘${label}’ 주제를 삭제했어요. 실행 취소할 수 있어요.`);
     if (removed) {
       if (undoTimer.current) clearTimeout(undoTimer.current);
       setUndo({ topic: removed, index });
@@ -191,8 +193,9 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
     const next = [...topics];
     next.splice(Math.min(index, next.length), 0, topic); // 삭제 전 위치와 내용 그대로
     commit({ ...draft, topics: next });
-    clearUndo();
-    setNotice(`‘${topic.label}’ 주제를 복원했어요.`);
+    clearUndo(); // 삭제 토스트를 닫는다. 별도의 복원 토스트나 본문 기록은 만들지 않는다
+    setNotice("");
+    setSrNotice(`‘${topic.label}’ 주제를 복원했어요.`);
     requestFocus(topic.key);
   }
 
@@ -389,59 +392,64 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
           {topics.map((t) => {
             const open = menuKey === t.key;
             return (
-              <li
-                key={t.key}
-                data-topic-card={t.key}
-                className="relative flex items-start gap-3 rounded-card bg-surface p-4 pr-14"
-              >
-                <TopicGraphic topicKey={t.key} className="mt-1 h-[3.375rem] w-18 shrink-0 min-[480px]:h-[4.5rem] min-[480px]:w-24" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-card-title font-semibold">{t.label}</p>
-                  {t.source === "user" && <p className="mt-1 text-caption text-fg-muted">내가 추가</p>}
-                  {t.why && <p className="mt-1 text-body text-fg-secondary">{t.why}</p>}
-                </div>
-                <div data-topic-menu className="absolute top-1 right-1 z-10">
-                  <button
-                    type="button"
-                    data-remove={t.key}
-                    aria-label={`‘${t.label}’ 주제 더보기 메뉴`}
-                    aria-haspopup="menu"
-                    aria-expanded={open}
-                    aria-disabled={reanalyzing || undefined}
-                    onClick={() => {
-                      if (reanalyzing) return;
-                      setMenuKey(open ? null : t.key);
-                    }}
-                    onKeyDown={(e) => {
-                      if (reanalyzing) return;
-                      if (e.key === "ArrowDown") {
-                        e.preventDefault();
-                        setMenuKey(t.key);
-                      }
-                    }}
-                    className="inline-flex size-12 items-center justify-center rounded-btn bg-transparent text-fg-muted transition-colors duration-150 hover:bg-transparent hover:text-fg aria-expanded:bg-transparent aria-expanded:text-fg aria-disabled:cursor-not-allowed aria-disabled:text-disabled-fg"
-                  >
-                    <MoreIcon />
-                  </button>
-                  {open && (
-                    <TopicMenu
-                      label={t.label}
-                      onDelete={() => onRemove(t.key, t.label)}
-                      onClose={() => {
-                        setMenuKey(null);
-                        requestFocus(t.key);
+              <li key={t.key} data-topic-card={t.key} className="rounded-card bg-surface p-4">
+                {/* 상단 행: 왼쪽 그래픽, 가운데 제목, 오른쪽 더보기. 설명은 행 아래에서 카드 안쪽 전체 폭을 쓴다 */}
+                <div className="flex items-center gap-3">
+                  <TopicGraphic topicKey={t.key} className="h-12 w-16 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-card-title font-semibold">{t.label}</p>
+                    {t.source === "user" && <p className="mt-1 text-caption text-fg-muted">내가 추가</p>}
+                  </div>
+                  <div data-topic-menu className="relative -mr-3 shrink-0 self-start">
+                    <button
+                      type="button"
+                      data-remove={t.key}
+                      aria-label={`‘${t.label}’ 주제 더보기 메뉴`}
+                      aria-haspopup="menu"
+                      aria-expanded={open}
+                      aria-disabled={reanalyzing || undefined}
+                      onClick={() => {
+                        if (reanalyzing) return;
+                        setMenuKey(open ? null : t.key);
                       }}
-                    />
-                  )}
+                      onKeyDown={(e) => {
+                        if (reanalyzing) return;
+                        if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          setMenuKey(t.key);
+                        }
+                      }}
+                      className="inline-flex size-12 items-center justify-center rounded-btn bg-transparent text-fg-muted transition-colors duration-150 hover:bg-transparent hover:text-fg aria-expanded:bg-transparent aria-expanded:text-fg aria-disabled:cursor-not-allowed aria-disabled:text-disabled-fg"
+                    >
+                      <MoreIcon />
+                    </button>
+                    {open && (
+                      <TopicMenu
+                        label={t.label}
+                        onDelete={() => onRemove(t.key, t.label)}
+                        onClose={() => {
+                          setMenuKey(null);
+                          requestFocus(t.key);
+                        }}
+                      />
+                    )}
+                  </div>
                 </div>
+                {t.why && <p className="mt-4 text-body leading-[1.6] text-fg-secondary">{t.why}</p>}
               </li>
             );
           })}
         </ul>
 
-        <p role="status" className="mt-2 min-h-6 text-caption text-fg-secondary">
-          {notice}
+        {/* 삭제와 복원 결과는 보이지 않는 상태 안내로만 전달한다(본문에 기록처럼 남기지 않는다) */}
+        <p role="status" className="sr-only">
+          {srNotice}
         </p>
+        {notice && (
+          <p role="status" className="mt-2 text-caption text-fg-secondary">
+            {notice}
+          </p>
+        )}
 
         {!hasTopics && (
           <p className="mt-2 flex items-start gap-2 rounded-btn bg-warning-bg px-3 py-2 text-caption text-warning">
@@ -472,7 +480,7 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
             type="button"
             data-undo
             onClick={onUndo}
-            className="inline-flex min-h-12 shrink-0 items-center rounded-btn px-3 text-label font-semibold text-surface underline underline-offset-2"
+            className="inline-flex min-h-11 shrink-0 items-center rounded-btn px-3 text-caption font-semibold text-surface underline underline-offset-2"
           >
             실행 취소
           </button>
@@ -490,10 +498,11 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
         )}
 
         <div className="flex gap-3">
-          <div className="min-w-0 flex-[2]">
+          <div className="min-w-0 flex-1">
             <Button
               variant="secondary"
               compact
+              className="whitespace-nowrap"
               onClick={onReanalyzeClick}
               aria-disabled={reanalyzing || limitReached || confirming || undefined}
             >
@@ -507,8 +516,8 @@ function DirectionView({ initial }: { initial: DirectionDraft }) {
               )}
             </Button>
           </div>
-          <div className="min-w-0 flex-[3]">
-            <Button compact onClick={onConfirm} aria-disabled={reanalyzing || confirming || undefined}>
+          <div className="min-w-0 flex-1">
+            <Button compact className="whitespace-nowrap" onClick={onConfirm} aria-disabled={reanalyzing || confirming || undefined}>
               확정하기
             </Button>
           </div>

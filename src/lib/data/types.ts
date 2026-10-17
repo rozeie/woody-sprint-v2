@@ -1,6 +1,7 @@
 import type { RecommendationSet } from "@/lib/content/types";
 import type { ConfirmedDirection, DirectionDraft } from "@/lib/direction-rules";
 import type { OnboardingDraft } from "@/lib/onboarding-rules";
+import type { ReaderNotes } from "@/lib/reader-notes";
 import type { SelectOutcome, UserContent } from "@/lib/selection-rules";
 import type { ReadingDay } from "@/lib/stack-rules";
 
@@ -47,6 +48,14 @@ export interface StackRepository {
    */
   completeContent(contentId: string): Promise<UserContent | null>;
 
-  /** 날짜별 활성 읽기 시간. 읽기 시간 측정은 이번 범위 밖이라 데모에서는 항상 비어 있다. */
+  /**
+   * 날짜별(한국 시간) 누적 활성 읽기 시간(초). 리더가 보이고 문서가 활성인 동안만 쌓이며(reading-time.ts),
+   * 선택, 완료, 예상 소요 시간으로는 만들지 않는다. 기록이 없으면 비어 있다.
+   */
   getReadingDays(): Promise<ReadingDay[]>;
+
+  /** 리더의 선택 입력(미니미션 답, 짧은 회고). 자료별로 이 브라우저에만 저장한다. 없으면 빈 값 */
+  getReaderNotes(contentId: string): Promise<ReaderNotes>;
+  /** 선택한 자료에만 저장한다. 선택하지 않은 자료면 저장하지 않고 false */
+  saveReaderNotes(contentId: string, notes: { mission: string; reflection: string }): Promise<boolean>;
 }

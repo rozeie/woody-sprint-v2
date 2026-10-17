@@ -7,7 +7,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { DEMO_BODIES } from "../src/config/demo-content-bodies.ts";
+import { CATALOG } from "../src/config/catalog.ts";
 import { DEMO_CONTENTS } from "../src/config/demo-contents.ts";
+import { SOURCE_CONTENTS, SOURCE_READERS } from "../src/config/source-contents.ts";
 import { GROUP_FIXTURES, OTHER_ONLY_TOPICS, SITUATION_PHRASE, TOPIC_WHY } from "../src/config/mock-analysis-fixtures.ts";
 import { CONCERN_CHIPS } from "../src/config/ui-provisional.ts";
 import { buildMockAnalysis } from "../src/lib/analysis/mock-analysis-core.ts";
@@ -65,7 +67,7 @@ describe("소스 코드(주석 제외)에 금지 문자와 점 목록이 없다"
 });
 
 describe("화면에 나가는 데이터에 금지 문자가 없다", () => {
-  const service = createDemoContentService(DEMO_CONTENTS, DEMO_BODIES);
+  const service = createDemoContentService(CATALOG, DEMO_BODIES, SOURCE_READERS);
   const check = (label: string, value: unknown) => {
     const text = JSON.stringify(value);
     const m = text.match(FORBIDDEN);
@@ -76,6 +78,8 @@ describe("화면에 나가는 데이터에 금지 문자가 없다", () => {
     check("칩", CONCERN_CHIPS);
     check("자료", DEMO_CONTENTS);
     check("본문", DEMO_BODIES);
+    check("원문 기반 자료", SOURCE_CONTENTS);
+    check("원문 기반 리더", SOURCE_READERS);
   });
 
   it("모의 분석 문구와 모든 입력 조합의 분석 결과", () => {
@@ -111,6 +115,6 @@ describe("화면에 나가는 데이터에 금지 문자가 없다", () => {
       check(`카드 ${k}`, await service.getCards(set));
       for (const item of set.items) check(`미리보기 ${item.contentId}`, await service.getPreview(set, item.contentId));
     }
-    for (const c of DEMO_CONTENTS) check(`리더 ${c.id}`, await service.getReaderContent(c.id));
+    for (const c of CATALOG) check(`리더 ${c.id}`, await service.getReaderContent(c.id));
   });
 });

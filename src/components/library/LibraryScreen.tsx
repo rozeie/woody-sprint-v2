@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { getContentService, type ContentSummary } from "@/lib/content";
-import { getRepository } from "@/lib/data";
 import { stateOf, type ContentState, type UserContent } from "@/lib/selection-rules";
 import { ButtonLink } from "@/components/ui/Button";
 import { TabScreen } from "@/components/TabScreen";
+import { useReaderEnv } from "@/components/reader/reader-env";
 
 type Row = { user: UserContent; summary: ContentSummary };
 
@@ -23,12 +23,13 @@ const ACTION_LABEL: Record<ContentState, string> = {
  * 선택한 자료는 추천이 바뀌어도 이 목록에서 계속 읽을 수 있다.
  */
 export function LibraryScreen() {
+  const { repo: getRepo, paths } = useReaderEnv();
   const [rows, setRows] = useState<Row[] | null>(null);
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      const user = await getRepository().getUserContents();
+      const user = await getRepo().getUserContents();
       const summaries = await getContentService().getSummaries(user.map((u) => u.contentId));
       const list = user
         .map((u) => ({ user: u, summary: summaries.find((s) => s.contentId === u.contentId) }))
@@ -39,7 +40,7 @@ export function LibraryScreen() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [getRepo]);
 
   return (
     <TabScreen>
@@ -57,7 +58,7 @@ export function LibraryScreen() {
           <p className="text-card-title font-semibold">아직 선택한 자료가 없어요</p>
           <p className="mt-1 text-body text-fg-secondary">홈의 오늘의 추천에서 자료를 골라 보세요.</p>
           <div className="mt-4">
-            <ButtonLink href="/home" variant="secondary">
+            <ButtonLink href={paths.home} variant="secondary">
               홈에서 고르기
             </ButtonLink>
           </div>
@@ -80,7 +81,7 @@ export function LibraryScreen() {
                   </p>
                 </div>
                 <ButtonLink
-                  href={`/read/${user.contentId}`}
+                  href={paths.read(user.contentId)}
                   variant="secondary"
                   className="!w-auto"
                   aria-label={`‘${summary.title}’ ${ACTION_LABEL[state]}`}

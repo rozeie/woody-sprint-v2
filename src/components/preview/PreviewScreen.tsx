@@ -4,11 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getContentService } from "@/lib/content";
 import type { ContentPreview } from "@/lib/content/types";
-import { getRepository } from "@/lib/data";
 import { canGoBackInApp } from "@/lib/navigation";
 import { stateOf, type UserContent } from "@/lib/selection-rules";
 import { Button } from "@/components/ui/Button";
-import { ChevronLeftIcon, ClockIcon } from "@/components/ui/icons";
+import { ClockIcon } from "@/components/ui/icons";
+import { useReaderEnv } from "@/components/reader/reader-env";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { TYPE_ICON, TYPE_PHRASE } from "@/components/home/RecommendationCard";
 import { SelectArea } from "@/components/selection/SelectArea";
 import { StartConfirmSheet } from "@/components/selection/StartConfirmSheet";
@@ -22,9 +23,10 @@ type State =
 /** 직전 화면(홈)으로 돌아간다. 새 탭·외부 링크로 직접 열었다면 앱 밖으로 나가지 않고 홈으로 이동한다. */
 function useGoBack() {
   const router = useRouter();
+  const { paths } = useReaderEnv();
   return () => {
     if (canGoBackInApp()) router.back();
-    else router.push("/home");
+    else router.push(paths.home);
   };
 }
 
@@ -35,6 +37,7 @@ function useGoBack() {
  */
 export function PreviewScreen({ contentId }: { contentId: string }) {
   const router = useRouter();
+  const { repo: getRepo, paths } = useReaderEnv();
   const goBack = useGoBack();
   const [state, setState] = useState<State>({ status: "loading" });
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -43,9 +46,9 @@ export function PreviewScreen({ contentId }: { contentId: string }) {
   const goReaderAfterClose = useRef(false);
 
   const refreshSelections = useCallback(async () => {
-    const userContents = await getRepository().getUserContents();
+    const userContents = await getRepo().getUserContents();
     setState((prev) => (prev.status === "ready" ? { ...prev, userContents } : prev));
-  }, []);
+  }, [getRepo]);
   const { pendingId, busy, notice, select } = useSelectAction(async () => {
     await refreshSelections();
   });
@@ -53,12 +56,12 @@ export function PreviewScreen({ contentId }: { contentId: string }) {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const repo = getRepository();
+      const repo = getRepo();
       const direction = await repo.getConfirmedDirection();
       if (!alive) return;
       setNavigating(false); // 리더에서 돌아와 화면이 다시 보일 때
       if (!direction) {
-        router.replace("/onboarding"); // 확정 전에는 접근할 수 없다
+        router.replace(paths.onboarding); // 확정 전에는 접근할 수 없다
         return;
       }
       const set = await repo.getRecommendationSet();
@@ -74,7 +77,7 @@ export function PreviewScreen({ contentId }: { contentId: string }) {
     return () => {
       alive = false;
     };
-  }, [contentId, router]);
+  }, [contentId, router, getRepo, paths.onboarding]);
 
   const mineUser =
     state.status === "ready" ? state.userContents.find((u) => u.contentId === state.preview.contentId) : undefined;
@@ -92,18 +95,7 @@ export function PreviewScreen({ contentId }: { contentId: string }) {
 
   return (
     <div className="pb-10">
-      {/* 제목은 뒤로가기 버튼을 뺀 남은 공간이 아니라 화면 기준 가운데에 둔다 */}
-      <header className="relative flex h-14 items-center">
-        <button
-          type="button"
-          onClick={goBack}
-          aria-label="이전 화면으로"
-          className="-ml-3 inline-flex size-12 items-center justify-center rounded-btn text-fg transition-colors duration-150 hover:bg-surface-subtle"
-        >
-          <ChevronLeftIcon />
-        </button>
-        <span className="pointer-events-none absolute inset-x-0 text-center text-card-title font-bold">미리보기</span>
-      </header>
+      <ScreenHeader title="미리보기" onBack={goBack} />
 
       <main className="pt-2">
         {state.status === "loading" && (
@@ -119,7 +111,7 @@ export function PreviewScreen({ contentId }: { contentId: string }) {
               지금 추천된 자료가 아니거나 없는 자료예요. 홈에서 추천 자료를 다시 확인해 주세요.
             </p>
             <div className="mt-6">
-              <Button variant="secondary" onClick={() => router.push("/home")}>
+              <Button variant="secondary" onClick={() => router.push(paths.home)}>
                 홈으로 가기
               </Button>
             </div>
@@ -153,7 +145,7 @@ export function PreviewScreen({ contentId }: { contentId: string }) {
               onClosed={() => {
                 if (goReaderAfterClose.current) {
                   goReaderAfterClose.current = false;
-                  router.push(`/read/${state.preview.contentId}`);
+                  router.push(paths.read(state.preview.contentId));
                 }
               }}
             />

@@ -1,4 +1,5 @@
 import { Button, ButtonLink } from "@/components/ui/Button";
+import { useReaderEnv } from "@/components/reader/reader-env";
 import type { ContentState } from "@/lib/selection-rules";
 import type { SelectNotice } from "./useSelectAction";
 
@@ -33,11 +34,12 @@ export function SelectArea({
   notice: SelectNotice | null;
   onOpenConfirm: () => void;
 }) {
+  const { paths } = useReaderEnv();
   const hintId = `select-hint-${contentId}`;
   const myNotice = notice && notice.contentId === contentId ? notice : null;
 
   const action = state ? (
-    <ButtonLink href={`/read/${contentId}`} data-start={contentId} aria-label={`‘${title}’ ${MINE[state].action}`}>
+    <ButtonLink href={paths.read(contentId)} data-start={contentId} aria-label={`‘${title}’ ${MINE[state].action}`}>
       {MINE[state].action}
     </ButtonLink>
   ) : (

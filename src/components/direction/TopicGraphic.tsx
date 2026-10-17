@@ -71,7 +71,15 @@ export function TopicGraphic({ topicKey, className }: { topicKey: string; classN
       )}
       {kind === "cards" && (
         <g strokeWidth={2}>
-          <rect x="30" y="4" width="58" height="40" rx="6" className="fill-line stroke-line" />
+          {/* 가장 뒤 사각형: 성장 계획 세우기만 연한 그린(#15B574 10%). 같은 그래픽을 쓰는 다른 주제는 회색 그대로 */}
+          <rect
+            x="30"
+            y="4"
+            width="58"
+            height="40"
+            rx="6"
+            className={topicKey === "growth-plan" ? "fill-primary/10 stroke-primary/10" : "fill-line stroke-line"}
+          />
           <rect x="19" y="14" width="58" height="40" rx="6" className="fill-primary-tint stroke-primary" />
           <rect x="8" y="24" width="58" height="40" rx="6" className="fill-surface stroke-primary" />
           <path d="M16 36h26M16 44h18" strokeLinecap="round" className="stroke-primary" />

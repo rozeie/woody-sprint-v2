@@ -2,11 +2,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { DEMO_BODIES } from "../src/config/demo-content-bodies.ts";
+import { CATALOG } from "../src/config/catalog.ts";
 import { DEMO_CONTENTS } from "../src/config/demo-contents.ts";
 import { CONCERN_CHIPS } from "../src/config/ui-provisional.ts";
 import { createDemoContentService } from "../src/lib/content/demo-content-service.ts";
-import { pickRecommendations, sanitizeRecommendationSet } from "../src/lib/content/recommend.ts";
-import { CONTENT_TYPE_LABEL, RECOMMENDATION_VERSION } from "../src/lib/content/types.ts";
+import { explainZero, pickRecommendations, sanitizeRecommendationSet } from "../src/lib/content/recommend.ts";
+import { CONTENT_TYPE_LABEL, RECOMMENDATION_VERSION, type ContentFull } from "../src/lib/content/types.ts";
 import type { ConfirmedDirection } from "../src/lib/direction-rules.ts";
 import { EMPTY_DRAFT, type OnboardingDraft } from "../src/lib/onboarding-rules.ts";
 import {
@@ -142,7 +143,7 @@ describe("리더 본문 데이터와 응답", () => {
 
   it("리더 응답에는 제목, 유형, 시간, 본문이 들어 있다", async () => {
     const r = await service.getReaderContent("user-interview-basics");
-    assert.ok(r && r.title && r.typeLabel && r.estMinutes > 0 && r.body.goal);
+    assert.ok(r && r.kind === "example" && r.title && r.typeLabel && r.estMinutes > 0 && r.body.goal);
   });
 });
 
@@ -319,7 +320,7 @@ describe("추천 묶음·카드·미리보기", () => {
 });
 
 describe("학습 스택(30일 잔디)", () => {
-  const today = new Date(2026, 9, 21, 15, 30); // 2026-10-21
+  const today = new Date(Date.UTC(2026, 9, 21, 6, 30)); // 한국 시간 2026-10-21 15:30
 
   it("기록이 없으면 30칸 모두 비활성이다 (접속·분석·확정으로는 채워지지 않는다)", () => {
     const days = buildStackDays(today, []);
@@ -359,9 +360,71 @@ describe("학습 스택(30일 잔디)", () => {
   });
 
   it("월·연도 경계에서도 날짜가 하루씩 이어진다", () => {
-    const days = buildStackDays(new Date(2027, 0, 5, 9), []);
+    const days = buildStackDays(Date.UTC(2027, 0, 5, 0, 0), []) /* 한국 시간 2027-01-05 09:00 */;
     assert.equal(days[0].date, "2026-12-07");
     assert.equal(days[29].date, "2027-01-05");
     assert.equal(new Set(days.map((d) => d.date)).size, 30);
+  });
+});
+
+describe("추천 0개 사유 구분(explainZero)", () => {
+  const c = (id: string, topics: string[]): ContentFull => ({ ...DEMO_CONTENTS[0], id, topics });
+  const catalog = [c("a", ["dev-collab"]), c("b", ["ia-flow"])];
+  it("겹치는 자료가 없으면 자료 부족", () => {
+    assert.equal(explainZero(catalog, ["ux-writing"], []), "no-content");
+  });
+  it("겹치는 자료를 모두 선택했으면 선택 완료", () => {
+    assert.equal(explainZero(catalog, ["dev-collab"], ["a"]), "all-selected");
+  });
+  it("선택하지 않은 겹치는 자료가 남아 있으면 직전 추천 제외", () => {
+    assert.equal(explainZero(catalog, ["dev-collab"], []), "excluded-previous");
+  });
+  it("실제 목록: 자료가 없는 주제는 자료 없음이고, UX 라이팅 2개와 개발자 협업 2개를 갖췄다", () => {
+    assert.equal(explainZero(CATALOG, ["growth-plan"], []), "no-content");
+    assert.equal(CATALOG.filter((x) => x.topics.includes("ux-writing")).length, 2);
+    assert.equal(CATALOG.filter((x) => x.topics.includes("dev-collab")).length, 2);
+  });
+});
+
+describe("새 회차 재추천: 신규 우선, 미선택 직전 추천으로만 보충", () => {
+  const mk = (id: string, topics: string[], type: ContentFull["type"] = "concept"): ContentFull => ({ ...DEMO_CONTENTS[0], id, topics, type });
+  const cat = [mk("a", ["t1"], "concept"), mk("b", ["t1"], "case"), mk("c", ["t1"], "concept"), mk("x", ["other"])];
+  const ids = (r: { content: ContentFull }[]) => r.map((p) => p.content.id);
+
+  it("직전 추천에 없던 자료를 먼저 쓴다", () => {
+    assert.deepEqual(ids(pickRecommendations(cat, ["t1"], [], ["a", "b"])).slice(0, 1), ["c"]);
+  });
+  it("신규가 모자라면 미선택 직전 추천으로 부족한 수만 보충한다(신규 우선, 중복 없음)", () => {
+    const r = ids(pickRecommendations(cat, ["t1"], [], ["a", "b"]));
+    assert.equal(r.length, 2);
+    assert.equal(r[0], "c");
+    assert.ok(["a", "b"].includes(r[1]));
+    assert.equal(new Set(r).size, r.length);
+  });
+  it("신규가 하나도 없으면 직전 추천으로 채운다", () => {
+    assert.equal(pickRecommendations(cat, ["t1"], ["c"], ["a", "b"]).length, 2);
+  });
+  it("이미 선택한 자료는 직전 추천이어도 다시 나오지 않는다", () => {
+    const r = ids(pickRecommendations(cat, ["t1"], ["a"], ["a", "b"]));
+    assert.ok(!r.includes("a"));
+    assert.deepEqual([...r].sort(), ["b", "c"]);
+  });
+  it("관련 없는 자료로는 채우지 않는다", () => {
+    const r = ids(pickRecommendations(cat, ["t1"], ["a", "b", "c"], ["x"]));
+    assert.deepEqual(r, []);
+    assert.ok(!ids(pickRecommendations(cat, ["t1"], [], ["a"])).includes("x"));
+  });
+  it("목표 개수(2)를 넘기지 않고, 후보가 1개면 1개만 돌려준다", () => {
+    assert.equal(pickRecommendations(cat, ["t1"], [], []).length, 2);
+    assert.equal(pickRecommendations(cat, ["t1"], ["a", "b"], ["c"]).length, 1);
+  });
+  it("보충 없이도 기존 결과와 같다(직전 추천을 주지 않으면 이전 동작)", () => {
+    assert.deepEqual(ids(pickRecommendations(DEMO_CONTENTS, ["ui-design"])), ids(pickRecommendations(DEMO_CONTENTS, ["ui-design"], [], [])));
+  });
+  it("실제 목록의 UX 라이팅은 두 자료이고 선택하면 남은 자료로, 모두 선택하면 비어 있다", () => {
+    assert.equal(pickRecommendations(CATALOG, ["ux-writing"]).length, 2);
+    const first = pickRecommendations(CATALOG, ["ux-writing"]).map((p) => p.content.id);
+    assert.deepEqual(ids(pickRecommendations(CATALOG, ["ux-writing"], [first[0]], first)), [first[1]]);
+    assert.deepEqual(pickRecommendations(CATALOG, ["ux-writing"], first, first), []);
   });
 });

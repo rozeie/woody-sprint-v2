@@ -20,6 +20,7 @@ import {
   type ContentPreview,
   type ReaderBody,
   type ReaderContent,
+  type SourceReader,
   type RecommendationCard,
   type RecommendationSet,
 } from "./types.ts";
@@ -36,8 +37,10 @@ export interface ContentService {
   createRecommendation(args: {
     direction: ConfirmedDirection;
     input: OnboardingDraft | null;
-    /** 새 회차에서 후보에서 뺄 자료 id(직전 추천, 이미 선택한 자료). 빼고 남는 자료가 모자라면 부족 상태가 된다 */
+    /** 후보에서 뺄 자료 id(이미 선택해 서재에 둔 자료) */
     excludeContentIds?: readonly string[];
+    /** 뒤로 미룰 자료 id(직전 추천 중 선택하지 않은 자료). 새 자료가 모자랄 때만 부족한 수를 이 자료로 채운다 */
+    deprioritizeContentIds?: readonly string[];
   }): Promise<RecommendationSet>;
   getCards(set: RecommendationSet): Promise<RecommendationCard[]>;
   /** 추천 묶음에 포함된 자료의 미리보기. 포함되지 않았거나 없으면 null. */
@@ -54,13 +57,15 @@ const labelOf = (key: string) => chipLabel.get(key) ?? key;
 export function createDemoContentService(
   catalog: readonly ContentFull[],
   bodies: Readonly<Record<string, ReaderBody>>,
+  /** 외부 원문 기반 자료의 리더 데이터(자료 id별). 없으면 예시 본문(bodies)으로 연다 */
+  sourceReaders: Readonly<Record<string, SourceReader>> = {},
 ): ContentService {
   const byId = new Map(catalog.map((c) => [c.id, c]));
 
   return {
-    async createRecommendation({ direction, input, excludeContentIds }) {
+    async createRecommendation({ direction, input, excludeContentIds, deprioritizeContentIds }) {
       const topicKeys = direction.topics.map((t) => t.key);
-      const picked = pickRecommendations(catalog, topicKeys, excludeContentIds);
+      const picked = pickRecommendations(catalog, topicKeys, excludeContentIds, deprioritizeContentIds);
       const items = picked.map(({ content, matched }) => {
         const args = {
           content,
@@ -117,9 +122,14 @@ export function createDemoContentService(
 
     async getReaderContent(contentId) {
       const c = byId.get(contentId);
+      if (!c) return null;
+      const base = { contentId: c.id, title: c.title, typeLabel: CONTENT_TYPE_LABEL[c.type], estMinutes: c.estMinutes };
+      // 원문 출처가 있는 자료만 원문 기반 구성으로 연다(가상 예시 자료를 원문 자료처럼 보이지 않게 한다)
+      const reader = sourceReaders[contentId];
+      if (c.source && reader) return { ...base, kind: "source", source: c.source, reader };
       const body = bodies[contentId];
-      if (!c || !body) return null;
-      return { contentId: c.id, title: c.title, typeLabel: CONTENT_TYPE_LABEL[c.type], estMinutes: c.estMinutes, body };
+      if (!body || c.source) return null;
+      return { ...base, kind: "example", body };
     },
 
     async getPreview(set, contentId) {

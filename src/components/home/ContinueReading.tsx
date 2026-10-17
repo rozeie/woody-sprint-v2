@@ -1,6 +1,9 @@
+"use client";
+
 import type { ContentSummary } from "@/lib/content";
 import { stateOf, type UserContent } from "@/lib/selection-rules";
 import { ButtonLink } from "@/components/ui/Button";
+import { useReaderEnv } from "@/components/reader/reader-env";
 
 export type ContinueItem = { user: UserContent; summary: ContentSummary };
 
@@ -10,6 +13,7 @@ export type ContinueItem = { user: UserContent; summary: ContentSummary };
  * 읽던 위치 복원은 P1이라 약속하지 않는다. 완료한 자료는 서재에서 다시 읽는다.
  */
 export function ContinueReading({ items }: { items: ContinueItem[] }) {
+  const { paths } = useReaderEnv();
   if (items.length === 0) return null;
   return (
     <section aria-labelledby="continue-title" className="mt-6">
@@ -33,7 +37,7 @@ export function ContinueReading({ items }: { items: ContinueItem[] }) {
                 </p>
               </div>
               <ButtonLink
-                href={`/read/${user.contentId}`}
+                href={paths.read(user.contentId)}
                 variant="secondary"
                 className="!w-auto"
                 aria-label={`‘${summary.title}’ ${reading ? "이어서 읽기" : "학습 시작"}`}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { getRepository } from "@/lib/data";
+import { useReaderEnv } from "@/components/reader/reader-env";
 
 export type SelectNotice = { contentId: string; tone: "ok" | "error"; text: string };
 
@@ -13,6 +13,7 @@ export type SelectNotice = { contentId: string; tone: "ok" | "error"; text: stri
 export function useSelectAction(
   onChanged: (info: { contentId: string; selected: boolean }) => Promise<void> | void,
 ) {
+  const { repo: getRepo } = useReaderEnv();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<SelectNotice | null>(null);
   // 렌더와 무관한 진행 중 표시. state는 비동기 갱신이라 연속 클릭을 막지 못한다.
@@ -25,7 +26,7 @@ export function useSelectAction(
     setNotice(null);
     let selected = false;
     try {
-      const out = await getRepository().selectContent({ setId: args.setId, contentId: args.contentId });
+      const out = await getRepo().selectContent({ setId: args.setId, contentId: args.contentId });
       selected = out.status === "selected" || out.status === "already-selected";
       if (selected) {
         setNotice({ contentId: args.contentId, tone: "ok", text: `‘${args.title}’을(를) 선택했어요. 서재에 저장했어요.` });
